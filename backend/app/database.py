@@ -8,8 +8,20 @@ import os
 
 load_dotenv() # Load environment variables from .env file
 
-DATABASE_URL = "sqlite:///./test.db"  # Default to SQLite if not set
+# Use the env var if set, otherwise fall back to SQLite
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+def get_db():
+    """
+    FastAPI dependency that provides a database session,
+    then closes it when the request is done.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

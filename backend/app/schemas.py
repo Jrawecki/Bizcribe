@@ -1,10 +1,18 @@
-# app/schemas.py
+# backend/app/schemas.py
 
 from pydantic import BaseModel
 
-class PlantCreate(BaseModel):
+class SmallBusinessBase(BaseModel):
     name: str
-    PlantDescription: str
+    description: str | None = None
+    phone_number: str | None = None
+    location: str | None = None
 
-class Chat(BaseModel):
-    description: str
+class SmallBusinessCreate(SmallBusinessBase):
+    pass
+
+class SmallBusiness(SmallBusinessBase):
+    id: int
+
+    class Config:
+        orm_mode = True
