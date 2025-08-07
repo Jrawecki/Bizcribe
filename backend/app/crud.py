@@ -26,6 +26,8 @@ def create_business(db: Session, biz: schemas.SmallBusinessCreate):
         description=biz.description,
         phone_number=biz.phone_number,
         location=biz.location,
+        lat=biz.lat, 
+        lng=biz.lng,   
     )
     db.add(db_obj)
     db.commit()

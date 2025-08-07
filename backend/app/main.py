@@ -6,6 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .routers import businesses
 
+print("Dropping all tables...")
+Base.metadata.drop_all(bind=engine)
+print("Creating all tables...")
+Base.metadata.create_all(bind=engine)
+print("All tables created.")
+
 # Create all database tables (if not already present)
 Base.metadata.create_all(bind=engine)
 

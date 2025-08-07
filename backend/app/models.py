@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Float, Integer, String
 from .database import Base
 
 class SmallBusiness(Base):
@@ -9,6 +9,8 @@ class SmallBusiness(Base):
     description = Column(String, nullable=True)
     phone_number = Column(String, nullable=True)
     location = Column(String, nullable=True)
+    lat = Column(Float)      
+    lng = Column(Float)
 
     
     
