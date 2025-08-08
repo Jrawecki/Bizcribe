@@ -8,7 +8,6 @@ export default function App() {
     <BrowserRouter>
       <div className="flex flex-col h-screen">
         <header className="flex items-center justify-between p-6 bg-indigo-600 dark:bg-gray-800 text-white shadow-lg">
-          <h1 className="text-3xl font-extrabold">PlaceHolder</h1>
           <nav className="flex space-x-4">
             <Link to="/" className="px-4 py-2 bg-white dark:bg-gray-700 rounded-full">Home</Link>
             <Link to="/map" className="px-4 py-2 bg-white dark:bg-gray-700 rounded-full">Map</Link>

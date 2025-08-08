@@ -12,7 +12,7 @@ export async function geocode(address) {
     format: 'json',
     limit: '1',
     // it's polite to include an email per Nominatim policy
-    email: 'youremail@yourdomain.com'
+    email: 'jrawecki31@gmail.com'
   });
 
   const url = `https://nominatim.openstreetmap.org/search?${params.toString()}`;
