@@ -1,72 +1,103 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* ===== Brand tokens ===== */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --bg: #0b0907;        /* primary background (black) */
+  --text: #ffffff;      /* primary text */
+  --blue: #3b5f7c;      /* light blue (chips, search, toggle) */
+  --ceramic: #74561a;   /* sand (unused for cards now) */
+  --gray: #9a9d9f;      /* neutral gray (cards + form panel) */
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* Base */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Force global white text */
+h1, h2, h3, h4, h5, h6, p, label, span, div, input, textarea, select, button, a { color: var(--text); }
+
+/* Links */
+a { text-decoration: none; opacity: 0.95; }
+a:hover { opacity: 1; }
+
+/* UI helpers */
+.chip {
+  background: var(--blue);
+  color: var(--text);
+  border-radius: 9999px;
+}
+.btn-primary { background: var(--blue); color: var(--text); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-ghost {
+  border: 1px solid color-mix(in oklab, var(--blue) 35%, transparent);
+  color: var(--text);
+  background: transparent;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
+/* Inputs */
+input, textarea, select {
+  background: #101113;
+  border: 1px solid #2a2d30;
+  color: var(--text);
 }
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+input::placeholder, textarea::placeholder { color: color-mix(in oklab, var(--text) 55%, transparent); }
+
+/* Cards now gray */
+.card {
+  background: var(--gray);
+  border: 1px solid #1f2225;
+  color: var(--text);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Modal panel also gray */
+.panel {
+  background: var(--gray);
+  border: 1px solid #242629;
+  color: var(--text);
+}
+
+/* Modal scrolling (prevents fields jumping off screen) */
+.modal-viewport { max-height: 90vh; overflow: hidden; }
+.modal-scroll { max-height: 74vh; overflow: auto; }
+
+/* Map container */
+#address-preview-map { min-height: 22rem; border-radius: 0.5rem; }
+
+/* === Leaflet popup theme (force override) === */
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-popup-tip {
+  background: var(--gray) !important;
+  color: var(--text) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35) !important;
+}
+
+.leaflet-container .leaflet-popup-content {
+  color: var(--text) !important;
+  margin: 12px 16px !important;
+  line-height: 1.35 !important;
+}
+
+.leaflet-container .leaflet-popup-close-button {
+  color: var(--text) !important;
+  opacity: .9 !important;
+}
+
+/* === Zoom (and any Leaflet bar) buttons === */
+.leaflet-container .leaflet-bar a,
+.leaflet-container .leaflet-control-zoom a {
+  background: var(--gray) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(0,0,0,.25) !important;
+}
+.leaflet-container .leaflet-bar a:hover,
+.leaflet-container .leaflet-control-zoom a:hover {
+  filter: brightness(1.06) !important;
 }
 
