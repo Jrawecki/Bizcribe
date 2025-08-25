@@ -63,12 +63,6 @@ export default function Home() {
 
       {!loading && <BusinessList items={filtered} onDelete={remove} />}
 
-      {!loading && filtered.length === 0 && (
-        <p className="text-white/70 text-center mt-6">
-          No businesses match your search.
-        </p>
-      )}
-
       <footer className="mt-auto border-t border-[#222] py-4">
         <div className="max-w-7xl mx-auto px-4 text-center text-sm text-white/70">
           © {new Date().getFullYear()} Bizscribe · Map data © OSM · Tiles & Geocoding by Mapbox
@@ -85,3 +79,4 @@ export default function Home() {
     </div>
   );
 }
+

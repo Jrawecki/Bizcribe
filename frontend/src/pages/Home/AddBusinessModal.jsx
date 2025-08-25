@@ -77,10 +77,13 @@ export default function AddBusinessModal({ onClose, onSave, loading }) {
             </div>
           </div>
 
-          <MiniMap
-            value={{ lat: form.lat, lng: form.lng }}
-            onChange={({lat,lng}) => setForm(f=>({ ...f, lat, lng }))}
-          />
+          <div className="lg:sticky lg:top-4 h-[72vh]">
+            <MiniMap
+              value={{ lat: form.lat, lng: form.lng }}
+              onChange={({lat,lng}) => setForm(f=>({ ...f, lat, lng }))}
+            />
+          </div>
+          
         </form>
       </div>
     </div>
