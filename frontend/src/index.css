@@ -6,7 +6,7 @@
   --bg: #0b0907;        /* primary background (black) */
   --text: #ffffff;      /* primary text */
   --blue: #3b5f7c;      /* light blue (chips, search, toggle) */
-  --ceramic: #74561a;   /* sand (unused for cards now) */
+  --ceramic: rgba(231, 165, 32, 0.877);   /* orange-ish. Used for top banner */
   --gray: #9a9d9f;      /* neutral gray (cards + form panel) */
 }
 

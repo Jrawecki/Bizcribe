@@ -87,3 +87,8 @@ python -m venv .venv
 pip install --upgrade pip
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Frontend (in a new terminal if backend stays running)
+cd Bizscribe\frontend
+npm install
+npm run dev
