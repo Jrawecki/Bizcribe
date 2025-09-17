@@ -69,3 +69,21 @@ frontend/
     main.jsx
   package.json
   vite.config.js
+
+
+
+## Local Setup
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Git
+
+### Backend
+```powershell
+cd Bizscribe\backend
+python -m venv .venv
+.\.venv\Scripts\Activate
+pip install --upgrade pip
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
