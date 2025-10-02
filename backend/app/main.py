@@ -4,18 +4,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 
-# ✅ Import models BEFORE create_all so tables are registered
+# Ensure models are imported before create_all
 from . import models                 # SmallBusiness
-from . import models_user            # User, memberships, reviews, etc. (make sure this file exists)
+from . import models_user            # User, memberships, reviews, etc.
 
 # Routers
 from .routers import businesses
-from .routers.auth import router as auth_router  # make sure routers/auth.py exists
+from .routers import business_submissions
+from .routers.auth import router as auth_router
 
-# ✅ Create tables (idempotent) — DO NOT drop on startup in dev
+# Create tables (idempotent)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Bizcribe Backend")
+app = FastAPI(title="Bizscribe Backend")
 
 # CORS for Vite
 app.add_middleware(
@@ -27,8 +28,10 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(auth_router)          # /api/auth/*
-app.include_router(businesses.router)    # /api/businesses
+app.include_router(auth_router)                 # /api/auth/*
+app.include_router(business_submissions.router) # /api/businesses/submissions
+app.include_router(businesses.router)           # /api/businesses
+
 
 @app.get("/health")
 def health():

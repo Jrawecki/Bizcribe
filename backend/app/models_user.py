@@ -6,11 +6,13 @@ from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, Foreig
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from .database import Base
 
+
 # === Global user role (RBAC) ===
 class UserRole(str, Enum):
     ADMIN = "ADMIN"
     BUSINESS = "BUSINESS"
     USER = "USER"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -29,12 +31,37 @@ class User(Base):
     reviews = relationship("Review", back_populates="user", cascade="all,delete-orphan")
     favorites = relationship("Favorite", back_populates="user", cascade="all,delete-orphan")
     checkins = relationship("CheckIn", back_populates="user", cascade="all,delete-orphan")
+    businesses_created = relationship(
+        "Business",
+        back_populates="created_by",
+        cascade="all,delete-orphan",
+        foreign_keys="Business.created_by_id",
+    )
+    business_submissions = relationship(
+        "BusinessSubmission",
+        back_populates="owner",
+        cascade="all,delete-orphan",
+        foreign_keys="BusinessSubmission.owner_id",
+    )
+    # Reverse relations for approvals/reviews
+    businesses_approved = relationship(
+        "Business",
+        back_populates="approved_by",
+        foreign_keys="Business.approved_by_id",
+    )
+    business_submissions_reviewed = relationship(
+        "BusinessSubmission",
+        back_populates="reviewed_by",
+        foreign_keys="BusinessSubmission.reviewed_by_id",
+    )
+
 
 # Per-business membership (owner/manager/staff)
 class MembershipRole(str, Enum):
     OWNER = "OWNER"
     MANAGER = "MANAGER"
     STAFF = "STAFF"
+
 
 class BusinessMembership(Base):
     __tablename__ = "business_memberships"
@@ -45,11 +72,10 @@ class BusinessMembership(Base):
     membership_role: Mapped[str] = mapped_column(SAEnum(MembershipRole), default=MembershipRole.OWNER, nullable=False)
 
     user = relationship("User", back_populates="memberships")
-    # NOTE: assumes you already have a Business model with __tablename__ = "businesses"
-    # We'll define a light relationship without importing your Business class to avoid circular import.
-    # relationship("Business", back_populates="memberships")  # optional if you add it on your Business model
+    business = relationship("Business", back_populates="memberships")
 
     __table_args__ = (UniqueConstraint("user_id", "business_id", name="uq_user_business"),)
+
 
 # Reviews / Favorites / Check-ins
 class Review(Base):
@@ -67,6 +93,7 @@ class Review(Base):
 
     user = relationship("User", back_populates="reviews")
 
+
 class Favorite(Base):
     __tablename__ = "favorites"
 
@@ -77,6 +104,7 @@ class Favorite(Base):
 
     user = relationship("User", back_populates="favorites")
     __table_args__ = (UniqueConstraint("user_id", "business_id", name="uq_fav_user_business"),)
+
 
 class CheckIn(Base):
     __tablename__ = "checkins"

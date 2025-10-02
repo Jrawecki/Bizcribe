@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from .. import crud
 from ..database import get_db
 from ..schemas_auth import (
     UserCreate,
@@ -13,19 +14,26 @@ from ..schemas_auth import (
 from ..crud_user import create_user, authenticate_user, get_user_by_email
 from ..security import create_access_token, create_refresh_token, decode_token
 from ..auth import get_current_user
-from ..models_user import User as DBUser
+from ..models_user import User as DBUser, UserRole as DBUserRole
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
 
 @router.post("/register", response_model=TokenPair)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     existing = get_user_by_email(db, payload.email)
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    user = create_user(db, payload.email, payload.password, payload.display_name, payload.role)
+
+    user = create_user(db, payload.email, payload.password, payload.display_name, DBUserRole.USER)
+
+    if payload.business:
+        crud.create_business_submission(db, payload.business, owner=user)
+
     access = create_access_token(user.id, user.role)
     refresh = create_refresh_token(user.id, user.role)
     return TokenPair(access_token=access, refresh_token=refresh, user=user)
+
 
 @router.post("/login", response_model=TokenPair)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
@@ -36,9 +44,11 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     refresh = create_refresh_token(user.id, user.role)
     return TokenPair(access_token=access, refresh_token=refresh, user=user)
 
+
 @router.get("/me", response_model=UserOut)
 def me(user = Depends(get_current_user)):
     return user
+
 
 @router.post("/refresh", response_model=TokenPair)
 def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
