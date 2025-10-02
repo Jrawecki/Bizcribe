@@ -1,12 +1,12 @@
-// frontend/src/auth/Login.jsx
+// frontend/src/auth/RegisterOnly.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from './AuthContext.jsx';
 
-export default function Login() {
-  const { login } = useAuth();
+export default function SignupOnly() {
+  const { register } = useAuth();
   const nav = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', display_name: '' });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,10 +15,14 @@ export default function Login() {
     setLoading(true);
     setErr('');
     try {
-      await login(form.email, form.password);
+      await register({
+        email: form.email,
+        password: form.password,
+        display_name: form.display_name,
+      });
       nav('/');
     } catch (e) {
-      setErr('Invalid email or password');
+      setErr('Registration failed. Try a different email.');
     } finally {
       setLoading(false);
     }
@@ -27,7 +31,7 @@ export default function Login() {
   return (
     <div className="min-h-full bg-[var(--bg)] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md card rounded-2xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold mb-4 text-center">Sign in</h1>
+        <h1 className="text-2xl font-bold mb-4 text-center">Create your account</h1>
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-sm mb-1">Email</label>
@@ -36,6 +40,15 @@ export default function Login() {
               className="w-full p-3 rounded-lg"
               value={form.email}
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Username</label>
+            <input
+              className="w-full p-3 rounded-lg"
+              value={form.display_name}
+              onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
               required
             />
           </div>
@@ -49,17 +62,19 @@ export default function Login() {
               required
             />
           </div>
+
           {err && <div className="text-red-300 text-sm">{err}</div>}
           <button
             type="submit"
             disabled={loading}
             className="w-full py-3 rounded-lg btn-primary disabled:opacity-60"
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Creating...' : 'Create account'}
           </button>
         </form>
+
         <div className="text-sm mt-4 text-center">
-          Don't have an account? <Link to="/register" className="underline">Create one</Link>
+          Want to register a business? <Link to="/register-business" className="underline">Go here</Link>
         </div>
       </div>
     </div>

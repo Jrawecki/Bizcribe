@@ -1,36 +1,57 @@
 import { useEffect, useState, useCallback } from 'react';
+import { fetchJson } from '../../../utils/apiClient.js';
 
-export function useBusinesses() {
+const toIdSet = (items = []) => new Set(items.map((item) => item.id));
+
+export function useBusinesses({ includeMine = false } = {}) {
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [error, setError] = useState(null);
+  const [manageableIds, setManageableIds] = useState(() => new Set());
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/businesses');
       if (!res.ok) throw new Error('Failed to load businesses');
-      setBusinesses(await res.json());
+      const data = await res.json();
+      setBusinesses(data);
       setError(null);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
-  }, []);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
 
-  useEffect(() => { refresh(); }, [refresh]);
+    if (includeMine) {
+      try {
+        const mine = await fetchJson('/api/businesses/mine');
+        setManageableIds(toIdSet(mine));
+      } catch {
+        setManageableIds(new Set());
+      }
+    } else {
+      setManageableIds(new Set());
+    }
+  }, [includeMine]);
 
-  const create = async (payload) => {
-    const res = await fetch('/api/businesses', {
-      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('Failed to add business');
-    await refresh();
-  };
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-  const remove = async (id) => {
-    const res = await fetch(`/api/businesses/${id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete business');
-    setBusinesses((b) => b.filter(x => x.id !== id));
-  };
+  const remove = useCallback(
+    async (id) => {
+      await fetchJson(`/api/businesses/${id}`, { method: 'DELETE' });
+      setBusinesses((b) => b.filter((x) => x.id !== id));
+      setManageableIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    },
+    []
+  );
 
-  return { businesses, loading, error, refresh, create, remove };
+  return { businesses, loading, error, refresh, remove, manageableIds };
 }

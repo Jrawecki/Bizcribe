@@ -81,7 +81,7 @@ export default function MapPage() {
     return mapboxUrl(styleId, MAPBOX_TOKEN);
   }, [styleId]);
 
-  if (loading) return <p className="text-center mt-8">Loading map…</p>;
+  if (loading) return <p className="text-center mt-8">Loading map...</p>;
   if (error)   return <p className="text-center mt-8 text-red-500">Error: {error}</p>;
 
   return (

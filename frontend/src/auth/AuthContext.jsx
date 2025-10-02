@@ -42,8 +42,8 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
-  const register = useCallback(async ({ email, password, display_name, role }) => {
-    const payload = { email, password, display_name, role };
+  const register = useCallback(async ({ email, password, display_name, business }) => {
+    const payload = { email, password, display_name, business };
     const data = await fetchJson('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -72,3 +72,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
   return ctx;
 }
+

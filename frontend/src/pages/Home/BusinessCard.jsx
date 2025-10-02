@@ -1,6 +1,6 @@
 import { Phone, MapPin, Trash2 } from 'lucide-react';
 
-export default function BusinessCard({ biz, onDelete }) {
+export default function BusinessCard({ biz, onDelete, canManage }) {
   return (
     <div className="card p-6 rounded-2xl shadow-lg">
       <h2 className="text-2xl font-bold mb-2">{biz.name}</h2>
@@ -17,13 +17,15 @@ export default function BusinessCard({ biz, onDelete }) {
         </span>
         {biz.location}
       </div>
-      <button
-        onClick={() => onDelete(biz.id)}
-        className="mt-4 text-red-200 hover:text-red-100 transition"
-        title="Delete"
-      >
-        <Trash2 />
-      </button>
+      {canManage && (
+        <button
+          onClick={() => onDelete(biz.id)}
+          className="mt-4 text-red-200 hover:text-red-100 transition"
+          title="Delete"
+        >
+          <Trash2 />
+        </button>
+      )}
     </div>
   );
 }
