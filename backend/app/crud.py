@@ -5,6 +5,7 @@ from sqlalchemy import and_, or_
 from . import models, schemas
 from .models_user import BusinessMembership, MembershipRole, User, UserRole
 from datetime import datetime
+import math
 
 
 def get_businesses(
@@ -19,6 +20,69 @@ def get_businesses(
     if approved_only:
         query = query.filter(models.Business.is_approved.is_(True))
     return query.offset(skip).limit(limit).all()
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Compute great-circle distance between two lat/lon pairs in kilometers."""
+    R = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+
+def search_businesses(
+    db: Session,
+    *,
+    skip: int = 0,
+    limit: int = 100,
+    approved_only: bool = True,
+    bbox: Optional[Tuple[float, float, float, float]] = None,  # (west, south, east, north)
+    near_lat: Optional[float] = None,
+    near_lng: Optional[float] = None,
+    radius_km: Optional[float] = None,
+) -> List[models.Business]:
+    """Search approved businesses with optional bbox and/or radius filters.
+
+    - bbox: filters by viewport rectangle (simple between conditions; no anti-meridian handling).
+    - near_lat/lng + radius_km: post-filters and sorts by distance using Haversine.
+    """
+    q = db.query(models.Business)
+    if approved_only:
+        q = q.filter(models.Business.is_approved.is_(True))
+
+    if bbox is not None:
+        west, south, east, north = bbox
+        q = q.filter(
+            and_(
+                models.Business.lat.isnot(None),
+                models.Business.lng.isnot(None),
+                models.Business.lng >= west,
+                models.Business.lng <= east,
+                models.Business.lat >= south,
+                models.Business.lat <= north,
+            )
+        )
+
+    # Pull a reasonable superset before Python-side distance filter/sort
+    base_items = q.offset(skip).limit(max(limit, 1000) if (bbox or radius_km) else limit).all()
+
+    # Apply radius/distance if requested
+    if near_lat is not None and near_lng is not None and radius_km is not None:
+        enriched = []
+        for b in base_items:
+            if b.lat is None or b.lng is None:
+                continue
+            d = _haversine_km(near_lat, near_lng, float(b.lat), float(b.lng))
+            if d <= radius_km:
+                enriched.append((d, b))
+        enriched.sort(key=lambda x: x[0])
+        return [b for _, b in enriched][:limit]
+
+    return base_items[:limit]
 
 
 def get_business(db: Session, business_id: int) -> Optional[models.Business]:
@@ -225,6 +289,30 @@ def approve_business_submission(db: Session, submission_id: int, *, reviewer: Us
     if not submission:
         return None
 
+    existing_business = None
+    if submission.created_business_id is not None:
+        existing_business = (
+            db.query(models.Business)
+            .filter(models.Business.id == submission.created_business_id)
+            .first()
+        )
+
+    if existing_business:
+        # Idempotent re-approval: ensure business stays approved and update audit trail
+        if not existing_business.is_approved:
+            existing_business.is_approved = True
+        existing_business.approved_at = datetime.utcnow()
+        existing_business.approved_by_id = reviewer.id
+
+        submission.status = models.BusinessSubmission.SubmissionStatus.APPROVED.value
+        submission.reviewed_at = datetime.utcnow()
+        submission.reviewed_by_id = reviewer.id
+        submission.review_notes = None
+
+        db.commit()
+        db.refresh(existing_business)
+        return existing_business
+
     # Create approved Business
     owner = submission.owner
     payload = schemas.SmallBusinessCreate(
@@ -245,6 +333,7 @@ def approve_business_submission(db: Session, submission_id: int, *, reviewer: Us
     submission.status = models.BusinessSubmission.SubmissionStatus.APPROVED.value
     submission.reviewed_at = datetime.utcnow()
     submission.reviewed_by_id = reviewer.id
+    submission.review_notes = None
     submission.created_business_id = business.id
 
     db.commit()
@@ -281,10 +370,22 @@ def reject_submission(
     )
     if not submission:
         return None
+
+    if submission.created_business_id is not None:
+        business = (
+            db.query(models.Business)
+            .filter(models.Business.id == submission.created_business_id)
+            .first()
+        )
+        if business:
+            db.delete(business)
+        submission.created_business_id = None
+
     submission.status = models.BusinessSubmission.SubmissionStatus.REJECTED.value
     submission.review_notes = notes
     submission.reviewed_at = datetime.utcnow()
     submission.reviewed_by_id = reviewer.id
+
     db.commit()
     db.refresh(submission)
     return submission

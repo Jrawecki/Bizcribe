@@ -6,7 +6,7 @@
   --bg: #0b0907;        /* primary background (black) */
   --text: #ffffff;      /* primary text */
   --blue: #3b5f7c;      /* light blue (chips, search, toggle) */
-  --ceramic: rgba(231, 165, 32, 0.877);   /* orange-ish. Used for top banner */
+  --ceramic: rgb(216, 174, 112);   /* orange-ish. Used for top banner */
   --gray: #9a9d9f;      /* neutral gray (cards + form panel) */
 }
 
@@ -63,6 +63,30 @@ input::placeholder, textarea::placeholder { color: color-mix(in oklab, var(--tex
   color: var(--text);
 }
 
+/* Segmented control */
+.segmented {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px;
+  background: #101113;
+  border: 1px solid #2a2d30;
+  border-radius: 12px;
+  height: 48px;
+}
+.segmented .seg {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  opacity: .9;
+}
+.segmented .seg.active {
+  background: var(--blue);
+  opacity: 1;
+}
+
 /* Modal scrolling (prevents fields jumping off screen) */
 .modal-viewport { max-height: 90vh; overflow: hidden; }
 .modal-scroll { max-height: 74vh; overflow: auto; }
@@ -100,4 +124,3 @@ input::placeholder, textarea::placeholder { color: color-mix(in oklab, var(--tex
 .leaflet-container .leaflet-control-zoom a:hover {
   filter: brightness(1.06) !important;
 }
-

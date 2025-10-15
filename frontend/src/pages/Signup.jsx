@@ -315,6 +315,7 @@ export default function Signup() {
           <div className="lg:sticky lg:top-4 h-[72vh]">
             <MiniMap
               value={{ lat: form.lat, lng: form.lng }}
+              pinEnabled={addressMode === 'manual'}
               onChange={({ lat, lng }) =>
                 setForm((prev) => ({
                   ...prev,

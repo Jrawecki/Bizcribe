@@ -1,9 +1,14 @@
 import { Phone, MapPin, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function BusinessCard({ biz, onDelete, canManage }) {
   return (
     <div className="card p-6 rounded-2xl shadow-lg">
-      <h2 className="text-2xl font-bold mb-2">{biz.name}</h2>
+      <h2 className="text-2xl font-bold mb-2">
+        <Link to={`/business/${biz.id}`} className="underline decoration-transparent hover:decoration-inherit">
+          {biz.name}
+        </Link>
+      </h2>
       <p className="mb-4 opacity-95">{biz.description}</p>
       <div className="flex items-center gap-2 text-sm mb-2 opacity-95">
         <span className="chip inline-flex items-center justify-center w-6 h-6">

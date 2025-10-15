@@ -1,6 +1,6 @@
 # backend/app/models_user.py
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum, ForeignKey, UniqueConstraint, Text, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
@@ -23,8 +23,8 @@ class User(Base):
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(SAEnum(UserRole), default=UserRole.USER, nullable=False)
     email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # relationships (lazy optional)
     memberships = relationship("BusinessMembership", back_populates="user", cascade="all,delete-orphan")
@@ -88,8 +88,8 @@ class Review(Base):
     title: Mapped[Optional[str]] = mapped_column(String(200))
     body: Mapped[Optional[str]] = mapped_column(Text)
     is_flagged: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="reviews")
 
@@ -100,7 +100,7 @@ class Favorite(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id"), index=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="favorites")
     __table_args__ = (UniqueConstraint("user_id", "business_id", name="uq_fav_user_business"),)
@@ -112,7 +112,7 @@ class CheckIn(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
     business_id: Mapped[int] = mapped_column(ForeignKey("businesses.id"), index=True, nullable=False)
-    visited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    visited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     note: Mapped[Optional[str]] = mapped_column(String(300))
 
     user = relationship("User", back_populates="checkins")

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,10 +17,47 @@ router = APIRouter(
 def read_businesses(
     skip: int = 0,
     limit: int = 100,
+    bbox: Optional[str] = None,  # "west,south,east,north"
+    near: Optional[str] = None,  # "lat,lng"
+    radius_km: Optional[float] = None,
     db: Session = Depends(get_db),
 ):
-    """Public listing of approved businesses."""
-    return crud.get_businesses(db, skip=skip, limit=limit, approved_only=True)
+    """Public listing of approved businesses with optional spatial filters.
+
+    - bbox: filter by viewport rectangle (comma-separated: west,south,east,north)
+    - near + radius_km: filter by distance and sort nearest-first
+    """
+
+    parsed_bbox: Optional[Tuple[float, float, float, float]] = None
+    if bbox:
+        try:
+            parts = [float(x.strip()) for x in bbox.split(",")]
+            if len(parts) != 4:
+                raise ValueError
+            parsed_bbox = (parts[0], parts[1], parts[2], parts[3])
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid bbox format. Use 'west,south,east,north'.")
+
+    near_lat = near_lng = None
+    if near:
+        try:
+            n = [float(x.strip()) for x in near.split(",")]
+            if len(n) != 2:
+                raise ValueError
+            near_lat, near_lng = n[0], n[1]
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid near format. Use 'lat,lng'.")
+
+    return crud.search_businesses(
+        db,
+        skip=skip,
+        limit=limit,
+        approved_only=True,
+        bbox=parsed_bbox,
+        near_lat=near_lat,
+        near_lng=near_lng,
+        radius_km=radius_km,
+    )
 
 
 @router.get("/pending", response_model=List[schemas.SmallBusiness])

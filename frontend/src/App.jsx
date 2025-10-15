@@ -3,6 +3,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom';
 import Home from './pages/Home/Home.jsx';
 import MapPage from './pages/MapPage.jsx';
+import BusinessDetail from './pages/BusinessDetail.jsx';
+import MySubmissions from './pages/MySubmissions.jsx';
 import Signup from './pages/Signup.jsx';
 import SignupOnly from './auth/SignupOnly.jsx';
 import logo from './assets/logo.png';
@@ -43,6 +45,9 @@ function Header() {
                   Admin
                 </Link>
               )}
+              <Link to="/my/submissions" className="px-3 py-2 rounded-full btn-ghost">
+                My Submissions
+              </Link>
               <Link to="/register-business" className="px-3 py-2 rounded-full btn-primary">
                 Register Business
               </Link>
@@ -76,6 +81,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/business/:id" element={<BusinessDetail />} />
+            <Route path="/my/submissions" element={<MySubmissions />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Signup />} />
             <Route path="/register-only" element={<SignupOnly />} />
