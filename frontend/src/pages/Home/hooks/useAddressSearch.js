@@ -133,6 +133,14 @@ export function useAddressSearch() {
         setOpen(false);
         return;
       }
+      if (/^[\d\s-]+$/.test(trimmed)) {
+        const digitsOnly = trimmed.replace(/[^\d]/g, '');
+        if (digitsOnly.length < 5) {
+          setList([]);
+          setOpen(false);
+          return;
+        }
+      }
       setFetching(true);
       try {
         let results = await fetchMapboxSuggestions(trimmed);
@@ -162,3 +170,7 @@ export function useAddressSearch() {
     },
   };
 }
+
+
+
+

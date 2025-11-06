@@ -1,94 +1,145 @@
-# Bizscribe
+# Bizscribe – Quickstart Guide
 
-Bizscribe is a **map-based discovery platform** that helps small businesses get visibility.  
-Businesses can sign up, create a profile, and optionally host a micro-site.  
-Users can explore nearby businesses through an interactive map and business listings.
+Welcome! This guide is for new contributors or teammates who just cloned the Bizscribe repository and want to get everything running fast. It walks through the full stack, highlights the secrets you need, and covers the common commands you’ll run day-to-day.
 
 ---
 
-## 📌 Features
+## 1. Repository Overview
 
-### Frontend (React + Vite + TailwindCSS)
-- Interactive **map** (Leaflet + Mapbox).
-- Pages:
-  - **Home** – list & search for businesses.
-  - **MapPage** – browse via map view.
-- Authentication with `AuthContext` (`Login`, `Register`).
-- Business components (`BusinessCard`, `BusinessList`, `AddBusinessModal`, `MiniMap`).
-- Utility helpers (`apiClient.js`, `geocode.js`, `mapboxTiles.js`, etc.).
+```
+Bizscribe/
+├─ backend/              # FastAPI app (auth, business CRUD, AI demo, etc.)
+├─ frontend/             # React + Vite client
+├─ README.md             # Original project notes
+```
 
-### Backend (FastAPI + SQLAlchemy)
-- **Authentication & Security**
-  - JWT access + refresh tokens.
-  - Role-based access control: `ADMIN`, `BUSINESS`, `USER`.
-  - Password hashing with **bcrypt** (via Passlib).
-- **Business Management**
-  - CRUD endpoints for businesses (`/api/businesses`).
-- **User Management**
-  - Register, login, refresh tokens, and `/me` endpoint.
-  - User roles, memberships, reviews, favorites, check-ins.
-- **Database**
-  - Default: SQLite (`Bizcribe.db`).
-  - Configurable via `DATABASE_URL` (Postgres/MySQL supported).
-- **CORS** pre-configured for local Vite development.
-- **Health check** at `/health`.
+### Backend Highlights
+- FastAPI + SQLAlchemy, JWT auth (access + refresh tokens)
+- Roles: `ADMIN`, `BUSINESS`, `USER`
+- SQLite by default (`Bizscribe.db`) with optional Postgres/MySQL
 
-### Extras
-- `ai.py`: Demo integration with a local **LLaMA** AI service.
-- `test.py`: Placeholder for backend tests.
+### Frontend Highlights
+- React 19, Vite, Tailwind layers
+- Mapbox GL + Leaflet hybrid map experience
+- Auth flows, business discovery pages, admin submissions review
 
 ---
 
-## 🗂 Project Structure
+## 2. Required Secret Files & Database
 
-```plaintext
-backend/
-  app/
-    main.py           # FastAPI entrypoint
-    auth.py           # Auth dependencies (get_current_user, role checks)
-    security.py       # Password hashing & JWT helpers
-    crud.py           # Business CRUD
-    crud_user.py      # User CRUD
-    models.py         # Business model
-    models_user.py    # User + memberships, reviews, favorites, check-ins
-    schemas.py        # Business schemas
-    schemas_auth.py   # Auth schemas
-    routers/
-      auth.py         # /api/auth routes
-      businesses.py   # /api/businesses routes
-    database.py       # DB session + config
-    ai.py             # Demo LLaMA integration
-  requirements.txt
+To boot the stack you **must** obtain a few files that are excluded from Git:
 
-frontend/
-  src/
-    auth/             # Login, Register, AuthContext
-    pages/            # Home, MapPage
-    utils/            # API + map helpers
-    App.jsx
-    main.jsx
-  package.json
-  vite.config.js
+| Needed For | File | Notes |
+| --- | --- | --- |
+| Backend runtime | `backend/.env` | Contains `DATABASE_URL`, JWT secrets, Mapbox token fallback, etc. |
+| Backend database | `backend/Bizscribe.db` (or your own DB) | Default SQLite file with seed data. Place it in `backend/` unless you configure a different database. |
+| Frontend runtime | `frontend/.env` | At minimum must define `VITE_MAPBOX_TOKEN=...` so the map can load. |
+
+> 🚫 These files are not in Git history. Ask an existing maintainer (or the repo owner) for the latest copies, or create your own `.env`/database from scratch if you’re setting up a brand new environment.
+
+If you’re wiring Bizscribe into Postgres or another database, update `backend/.env` with a valid `DATABASE_URL`. The models auto-migrate on startup, but you’ll need to seed the data yourself.
+
+---
+
+## 3. System Requirements
+
+- **Python** 3.11+
+- **Node.js** 18+ (or any Node LTS that Vite supports)
+- **Git** (for source control)
+- **Mapbox account/token** for the frontend if you don’t have one already
 
 
+---
 
-## Local Setup
+## 4. First-Time Setup
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- Git
+### 4.1 Clone & Pull Secrets
+```bash
+git clone https://github.com/snoop775/Bizscribe.git
+cd Bizscribe
 
-### Backend
+# Copy in secret files you obtained separately
+#   backend/.env
+#   backend/Bizscribe.db        (if using SQLite)
+#   frontend/.env
+```
+
+### 4.2 Backend (FastAPI)
 ```powershell
-cd Bizscribe\backend
+cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate
+.\.venv\Scripts\Activate   # PowerShell on Windows
 pip install --upgrade pip
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Frontend (in a new terminal if backend stays running)
-cd Bizscribe\frontend
+# Run the API
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Health check: http://localhost:8000/health  
+Interactive docs: http://localhost:8000/docs
+
+
+### 4.3 Frontend (React + Vite)
+In a second terminal:
+```Command Prompt
+cd frontend
 npm install
-npm run dev
+npm run dev   # starts Vite dev server, default on http://localhost:5173
+```
+Ensure `frontend/.env` contains a valid `VITE_MAPBOX_TOKEN`. Without it, the Mapbox layer will fail and fallback to Leaflet only.
+
+---
+
+## 5. Daily Dev Commands
+
+| Purpose | Command |
+| --- | --- |
+| Backend (dev server) | `uvicorn app.main:app --reload --port 8000` |
+| Frontend dev server | `npm run dev` |
+| Frontend build | `npm run build` |
+| Frontend preview (after build) | `npm run preview` |
+| Formatting (React) | `npx prettier --write "src/**/*.{js,jsx,ts,tsx}"` |
+
+---
+
+## 6. Environment Variables Reference
+
+### backend/.env (example)
+```
+DATABASE_URL=sqlite:///./Bizscribe.db
+JWT_SECRET=change_me
+JWT_REFRESH_SECRET=change_me_too
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+MAPBOX_TOKEN=pk.<change_me_three>
+```
+
+### frontend/.env
+```
+VITE_MAPBOX_TOKEN=pk.YourRealTokenHere
+```
+
+> ❗️Keep secrets out of Git. Add new sensitive entries to `.gitignore` if needed.
+
+---
+
+## 7. Troubleshooting
+
+| Issue | Fix |
+| --- | --- |
+| **Map shows blank screen / errors** | Confirm `VITE_MAPBOX_TOKEN` is valid and the backend `/api/businesses` endpoint is reachable. Check browser dev tools console. |
+| **Frontend build reintroduces old icons** | Run `npm run build` after cleaning `frontend/dist/`. Old assets only appear if referenced somewhere. |
+| **Unauthorized API responses** | Make sure backend `.env` secrets match the ones in your database, especially if you imported a shared `Bizscribe.db`. |
+| **Leaflet uses default blue markers** | Ensure `frontend/src/utils/mapIconSetup.js` is importing your desired marker asset (currently `pin_drop.png`). |
+| **Database missing data** | If you copied a `Bizscribe.db`, verify the path and permissions. For Postgres/MySQL, run any seed scripts or manual inserts you need. |
+
+---
+
+## 8. Next Steps
+
+- Explore `frontend/src/pages/Home/` to customize the main map experience.
+- Dive into `backend/app/routers/` to add new API endpoints or extend business workflows.
+- Update this README.md as the onboarding flow evolves.
+
+Happy building! 🚀 If you hit issues, open an issue or reach out to the maintainers. Keeping this guide accurate is a team effort—please submit improvements as you discover smoother workflows.
