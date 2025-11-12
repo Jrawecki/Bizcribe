@@ -21,7 +21,7 @@ export default function SignupOnly() {
         display_name: form.display_name,
       });
       nav('/');
-    } catch (e) {
+    } catch {
       setErr('Registration failed. Try a different email.');
     } finally {
       setLoading(false);

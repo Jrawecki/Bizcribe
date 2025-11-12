@@ -5,11 +5,11 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import 'leaflet/dist/leaflet.css';
 import {
+  Disc2,
   ExternalLink,
   LocateFixed,
   MapPin,
   Navigation,
-  PersonStanding,
   Phone,
   Search,
   SlidersHorizontal,
@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
-import { MapContainer, Marker as LeafletMarker, Popup as LeafletPopup, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer } from 'react-leaflet';
 import { useAddressSearch } from './hooks/useAddressSearch.js';
 import pinDropUrl from '../../assets/pin_drop.png';
 import {
@@ -32,7 +32,6 @@ const WILMINGTON_CENTER = { lat: 39.7391, lng: -75.5398 };
 const DEFAULT_ZOOM = 12;
 const DARK_STYLE = 'mapbox/navigation-night-v1';
 const SATELLITE_STYLE = 'mapbox/satellite-streets-v12';
-const MARKER_ICON_URL = pinDropUrl;
 
 mapboxgl.accessToken = MAPBOX_TOKEN || '';
 
@@ -97,15 +96,6 @@ const haversineMi = (a, b) => {
 const formatAddress = (biz) =>
   biz.location ||
   [biz.address1, biz.city, biz.state].filter(Boolean).join(', ');
-
-const escapeHtml = (value = '') =>
-  String(value).replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[char] || char);
 
 const buildDirectionsUrl = (biz) => {
   if (typeof biz.lat === 'number' && typeof biz.lng === 'number') {
@@ -268,13 +258,22 @@ export default function Home() {
   const [mapStyle, setMapStyle] = useState(MAPBOX_DEFAULT_STYLE);
   const [mapSupportsStyles, setMapSupportsStyles] = useState(MAPBOX_ENABLED);
 
-  const addr = useAddressSearch();
+  const {
+    state: {
+      query: addrQuery,
+      setQuery: setAddrQuery,
+      setOpen: setAddrOpen,
+      fetching: addrFetching,
+      list: addrList,
+    },
+    actions: { search: searchAddress, lock: lockAddressInput, unlock: unlockAddressInput },
+  } = useAddressSearch();
   const centerLockedRef = useRef(false);
   const locationRef = useRef(null);
   const filtersRef = useRef(null);
   const mapSectionRef = useRef(null);
 
-  const locationSuggestions = (addr.state.list || []).slice(0, 10);
+  const locationSuggestions = (addrList || []).slice(0, 10);
 
   useEffect(() => {
     const savedWhat = localStorage.getItem('home_what');
@@ -295,7 +294,7 @@ export default function Home() {
                 if (!centerLockedRef.current && !center) {
                   setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                   setCenterLabel('your location');
-                  addr.state.setQuery('Current location', { keepLocked: true });
+                  setAddrQuery('Current location', { keepLocked: true });
                 }
               },
               () => {},
@@ -308,13 +307,13 @@ export default function Home() {
       }
     })();
     return () => { cancelled = true; };
-  }, [center]);
+  }, [center, setAddrQuery]);
 
   useEffect(() => {
     const handler = (event) => {
       if (locationRef.current && !locationRef.current.contains(event.target)) {
         setLocationOpen(false);
-        addr.state.setOpen(false);
+        setAddrOpen(false);
       }
       if (filtersRef.current && !filtersRef.current.contains(event.target)) {
         setFiltersOpen(false);
@@ -322,7 +321,7 @@ export default function Home() {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  }, [setAddrOpen]);
 
   const updateLocationPanelRect = useCallback(() => {
     if (!locationRef.current) return;
@@ -462,22 +461,22 @@ export default function Home() {
             className="dropdown-item dropdown-item--action"
             onClick={() => {
               if (!navigator?.geolocation) return;
-              const previousQuery = addr.state.query;
-              addr.state.setQuery('Current location', { keepLocked: true });
-              addr.actions.lock();
-              addr.state.setOpen(false);
+              const previousQuery = addrQuery;
+              setAddrQuery('Current location', { keepLocked: true });
+              lockAddressInput();
+              setAddrOpen(false);
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
                   centerLockedRef.current = true;
                   setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                   setCenterLabel('your location');
                   setLocationOpen(false);
-                  addr.state.setOpen(false);
-                  addr.state.setQuery('Current location', { keepLocked: true });
+                  setAddrOpen(false);
+                  setAddrQuery('Current location', { keepLocked: true });
                 },
                 () => {
-                  addr.state.setQuery(previousQuery || '', { keepLocked: true });
-                  addr.actions.unlock();
+                  setAddrQuery(previousQuery || '', { keepLocked: true });
+                  unlockAddressInput();
                 },
                 { enableHighAccuracy: true }
               );
@@ -486,8 +485,8 @@ export default function Home() {
             Use current location
           </button>
           <div className="dropdown-scroll">
-            {addr.state.fetching && <div className="dropdown-empty">Searching...</div>}
-            {!addr.state.fetching && locationSuggestions.length === 0 && (
+            {addrFetching && <div className="dropdown-empty">Searching...</div>}
+            {!addrFetching && locationSuggestions.length === 0 && (
               <div className="dropdown-empty">No matches yet. Try a city or ZIP.</div>
             )}
             {locationSuggestions.map((s, idx) => (
@@ -500,11 +499,11 @@ export default function Home() {
                     centerLockedRef.current = true;
                     setCenter({ lat: s.lat, lng: s.lng });
                   }
-                  addr.state.setQuery(s.label || '', { keepLocked: true });
-                  addr.actions.lock();
+                  setAddrQuery(s.label || '', { keepLocked: true });
+                  lockAddressInput();
                   setCenterLabel(s.label || 'chosen address');
                   setLocationOpen(false);
-                  addr.state.setOpen(false);
+                  setAddrOpen(false);
                 }}
               >
                 {s.label}
@@ -569,25 +568,25 @@ export default function Home() {
                     <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
                     <input
                       type="text"
-                      value={addr.state.query}
+                      value={addrQuery}
                       onFocus={() => {
                         setLocationOpen(true);
-                        addr.actions.unlock();
-                        if (addr.state.query) {
-                          addr.state.setQuery('');
+                        unlockAddressInput();
+                        if (addrQuery) {
+                          setAddrQuery('');
                         }
-                        addr.state.setOpen(true);
+                        setAddrOpen(true);
                         setTimeout(updateLocationPanelRect, 0);
                       }}
                       onChange={(e) => {
                         const value = e.target.value;
-                        addr.state.setQuery(value);
-                        addr.actions.unlock();
+                        setAddrQuery(value);
+                        unlockAddressInput();
                         if (value && value.trim().length >= 2) {
-                          addr.state.setOpen(true);
-                          addr.actions.search(value);
+                          setAddrOpen(true);
+                          searchAddress(value);
                         } else {
-                          addr.state.setOpen(false);
+                          setAddrOpen(false);
                         }
                       }}
                       placeholder="Location"
@@ -905,7 +904,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
         showPopup(marker);
       }
     }
-  }, [focusBusiness, mapboxFailed, center, mapStyle]);
+  }, [focusBusiness, mapboxFailed, center, mapStyle, onCloseup]);
 
   const rebuildMarkers = useCallback(() => {
     if (mapboxFailed || !mapRef.current) return;
@@ -981,14 +980,14 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
     }
     if (!youMarkerRef.current) {
       const element = document.createElement('div');
-      element.className = 'home-map__you-marker';
+      element.className = 'home-map__you-dot';
       element.setAttribute('role', 'img');
       element.setAttribute('aria-label', 'Your location');
       element.title = 'You are here';
       element.style.zIndex = '60';
       element.style.pointerEvents = 'none';
       const root = createRoot(element);
-      root.render(<PersonStanding size={52} strokeWidth={2.4} color="#166534" />);
+      root.render(<Disc2 size={20} strokeWidth={3} color="#e0e7ff" />);
       youMarkerRootRef.current = root;
       const marker = new mapboxgl.Marker({ element, anchor: 'center' });
       marker.setLngLat(coords).addTo(map);
@@ -1005,7 +1004,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
   useEffect(() => {
     if (mapRef.current || mapboxFailed) return;
     if (!containerRef.current) return;
-    const preferredCenter = toLngLatTuple(centerRef.current) || toLngLatTuple(center);
+    const preferredCenter = toLngLatTuple(centerRef.current);
     const startingCenter = preferredCenter || [WILMINGTON_CENTER.lng, WILMINGTON_CENTER.lat];
     try {
       const map = new mapboxgl.Map({
@@ -1028,8 +1027,9 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       setMapboxFailed(true);
     }
 
+    const markersMap = markersRef.current;
     return () => {
-      markersRef.current.forEach((marker) => {
+      markersMap.forEach((marker) => {
         if (typeof marker.getPopup === 'function') {
           const popup = marker.getPopup();
           if (popup && typeof popup.__unmount === 'function') {
@@ -1039,7 +1039,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
         }
         marker.remove();
       });
-      markersRef.current.clear();
+      markersMap.clear();
       if (activePopupRef.current) {
         if (typeof activePopupRef.current.__unmount === 'function') {
           activePopupRef.current.__unmount();
@@ -1140,27 +1140,12 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
   const mapCenter = center ? [center.lat, center.lng] : [WILMINGTON_CENTER.lat, WILMINGTON_CENTER.lng];
   const zoom = center ? DEFAULT_ZOOM : 4;
   const mapRef = useRef(null);
+  const [leafletMap, setLeafletMap] = useState(null);
+  const [overlayEl, setOverlayEl] = useState(null);
+  const [projectedItems, setProjectedItems] = useState([]);
+  const [projectedCenter, setProjectedCenter] = useState(null);
   const pendingCloseupRef = useRef(false);
-  const markerIcon = useMemo(
-    () =>
-      L.icon({
-        iconUrl: MARKER_ICON_URL,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-        popupAnchor: [0, -30],
-        className: 'home-map__marker home-map__marker--leaflet',
-      }),
-    [],
-  );
-  const youIcon = useMemo(
-    () =>
-      L.divIcon({
-        className: 'home-map__you-marker',
-        iconSize: [24, 24],
-        iconAnchor: [12, 24],
-      }),
-    [],
-  );
+  const popupRef = useRef(null);
 
   const handleLeafletCloseup = useCallback(
     (biz) => {
@@ -1176,94 +1161,180 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
     [onCloseup],
   );
 
+  const detachPopup = useCallback(() => {
+    if (popupRef.current) {
+      const existing = popupRef.current;
+      if (typeof existing.__unmount === 'function') {
+        existing.__unmount();
+        existing.__unmount = null;
+      }
+      existing.remove();
+      popupRef.current = null;
+    }
+  }, []);
+
+  const openLeafletPopup = useCallback(
+    (biz) => {
+      if (!leafletMap) return;
+      const coords = toLeafletTuple(biz);
+      if (!coords) return;
+      detachPopup();
+      const info = buildPopupData(biz, center);
+      const { element, unmount } = createPopupElement(info, () => handleLeafletCloseup(biz));
+      const popup = L.popup({ offset: [0, -12], closeButton: false }).setLatLng(coords).addTo(leafletMap);
+      if (element) {
+        popup.setContent(element);
+      }
+      popup.__unmount = unmount;
+      popup.on('remove', () => {
+        if (typeof popup.__unmount === 'function') {
+          popup.__unmount();
+          popup.__unmount = null;
+        }
+      });
+      popupRef.current = popup;
+    },
+    [center, detachPopup, handleLeafletCloseup, leafletMap],
+  );
+
+  const updateOverlayPositions = useCallback(() => {
+    const map = leafletMap;
+    if (!map) return;
+    const projectPoint = (lat, lng) => {
+      if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+      const point = map.latLngToLayerPoint([lat, lng]);
+      if (!point) return null;
+      return { x: point.x, y: point.y };
+    };
+    const youPoint = center ? projectPoint(center.lat, center.lng) : null;
+    const markerPoints = (items || [])
+      .map((biz) => {
+        if (typeof biz.lat !== 'number' || typeof biz.lng !== 'number') return null;
+        const point = projectPoint(biz.lat, biz.lng);
+        if (!point) return null;
+        return { biz, point };
+      })
+      .filter(Boolean);
+    setProjectedCenter(youPoint);
+    setProjectedItems(markerPoints);
+  }, [center, items, leafletMap]);
+
   useEffect(() => {
     return () => {
       mapRef.current = null;
+      detachPopup();
     };
-  }, []);
+  }, [detachPopup]);
 
   useEffect(() => {
     if (!focusBusiness) {
       pendingCloseupRef.current = false;
+      return;
     }
-  }, [focusBusiness]);
-
-  useEffect(() => {
-    if (!mapRef.current || !focusBusiness) return;
+    if (!leafletMap) return;
     const leafletCoords = toLeafletTuple(focusBusiness);
     if (!leafletCoords) return;
-    const [lat, lng] = leafletCoords;
-    const map = mapRef.current;
-    const currentZoom = map.getZoom?.() ?? DEFAULT_ZOOM;
+    const currentZoom = leafletMap.getZoom?.() ?? DEFAULT_ZOOM;
     const closeupRequested = pendingCloseupRef.current;
     const targetZoom = closeupRequested
-      ? Math.min(map.getMaxZoom?.() || 21, Math.max(currentZoom, 18))
+      ? Math.min(leafletMap.getMaxZoom?.() || 21, Math.max(currentZoom, 18))
       : Math.max(currentZoom, 16);
-    map.flyTo(leafletCoords, targetZoom, { duration: 0.6 });
-    const info = buildPopupData(focusBusiness, center);
-    const { element, unmount } = createPopupElement(info, () => handleLeafletCloseup(focusBusiness));
-    const popup = L.popup({ offset: [0, -12] }).setLatLng(leafletCoords);
-    if (element) {
-      popup.setContent(element);
-    }
-    popup.openOn(map);
-    popup.once('remove', () => {
-      unmount();
-    });
+    leafletMap.flyTo(leafletCoords, targetZoom, { duration: 0.6 });
+    openLeafletPopup(focusBusiness);
     pendingCloseupRef.current = false;
-  }, [focusBusiness, center, handleLeafletCloseup]);
+  }, [focusBusiness, openLeafletPopup, leafletMap]);
+
+  useEffect(() => {
+    if (!leafletMap) return;
+    const panes = leafletMap.getPanes();
+    if (!panes?.overlayPane) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'leaflet-marker-overlay';
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.pointerEvents = 'none';
+    panes.overlayPane.appendChild(overlay);
+    setOverlayEl(overlay);
+    updateOverlayPositions();
+    const handleMove = () => updateOverlayPositions();
+    leafletMap.on('move zoom resize', handleMove);
+    return () => {
+      leafletMap.off('move zoom resize', handleMove);
+      panes.overlayPane.removeChild(overlay);
+      setOverlayEl(null);
+    };
+  }, [leafletMap, updateOverlayPositions]);
+
+  useEffect(() => {
+    updateOverlayPositions();
+  }, [center, items, updateOverlayPositions]);
+
+  useEffect(() => {
+    if (!leafletMap || !center) return;
+    const coords = toLeafletTuple(center);
+    if (!coords) return;
+    leafletMap.flyTo(coords, DEFAULT_ZOOM, { duration: 0.5 });
+  }, [center, leafletMap]);
+
+  const markerOffset = { x: 18, y: 36 };
+
+  const overlayContent =
+    overlayEl && projectedItems
+      ? createPortal(
+          <>
+            {projectedItems.map(({ biz, point }) => (
+              <button
+                type="button"
+                key={biz.id ?? `${point.x}-${point.y}`}
+                className={`home-map__marker-wrapper ${focusBusiness?.id === biz.id ? 'home-map__marker--active' : ''}`}
+                style={{
+                  transform: `translate(${point.x - markerOffset.x}px, ${point.y - markerOffset.y}px)`,
+                  pointerEvents: 'auto',
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openLeafletPopup(biz);
+                }}
+              >
+                <MapPin size={20} strokeWidth={2.2} />
+              </button>
+            ))}
+            {projectedCenter && (
+              <div
+                className="home-map__you-dot"
+                style={{
+                  transform: `translate(${projectedCenter.x - 12}px, ${projectedCenter.y - 12}px)`,
+                  pointerEvents: 'none',
+                }}
+              >
+                <Disc2 size={20} strokeWidth={3} color="#e0e7ff" />
+              </div>
+            )}
+          </>,
+          overlayEl,
+        )
+      : null;
 
   return (
-    <MapContainer
-      center={mapCenter}
-      zoom={zoom}
-      scrollWheelZoom
-      style={{ width: '100%', height: '100%' }}
-      attributionControl={false}
-      whenCreated={(map) => {
-        mapRef.current = map;
-      }}
-    >
-      <TileLayer {...tileProps} />
-      {typeof center?.lat === 'number' && typeof center?.lng === 'number' && (
-        <LeafletMarker
-          position={[center.lat, center.lng]}
-          icon={youIcon}
-          interactive={false}
-          keyboard={false}
-          zIndexOffset={1000}
-          eventHandlers={{
-            add: (event) => {
-              const el = event.target.getElement();
-                if (el && !el.__root) {
-                const root = createRoot(el);
-                root.render(<PersonStanding size={52} strokeWidth={2.4} color="#166534" />);
-                el.__root = root;
-              }
-            },
-            remove: (event) => {
-              const el = event.target.getElement();
-              if (el && el.__root) {
-                const root = el.__root;
-                el.__root = null;
-                scheduleRootUnmount(root);
-              }
-            },
-          }}
-        />
-      )}
-      {(items || []).map((biz, idx) => {
-        if (typeof biz.lng !== 'number' || typeof biz.lat !== 'number') return null;
-        const info = buildPopupData(biz, center);
-        return (
-          <LeafletMarker key={biz.id ?? idx} position={[biz.lat, biz.lng]} icon={markerIcon}>
-            <LeafletPopup>
-              <MapPopupContent info={info} onCloseup={() => handleLeafletCloseup(biz)} />
-            </LeafletPopup>
-          </LeafletMarker>
-        );
-      })}
-    </MapContainer>
+    <>
+      <MapContainer
+        center={mapCenter}
+        zoom={zoom}
+        scrollWheelZoom
+        style={{ width: '100%', height: '100%' }}
+        attributionControl={false}
+        whenCreated={(map) => {
+          mapRef.current = map;
+          setLeafletMap(map);
+        }}
+      >
+        <TileLayer {...tileProps} />
+      </MapContainer>
+      {overlayContent}
+    </>
   );
 }
 

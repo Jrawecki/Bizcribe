@@ -17,7 +17,7 @@ export default function Login() {
     try {
       await login(form.email, form.password);
       nav('/');
-    } catch (e) {
+    } catch {
       setErr('Invalid email or password');
     } finally {
       setLoading(false);

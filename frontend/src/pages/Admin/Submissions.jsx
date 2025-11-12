@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { fetchJson } from '../../utils/apiClient.js';
 
@@ -14,13 +14,13 @@ function StatusBadge({ status }) {
 }
 
 export default function AdminSubmissions() {
-  const { user, role, isAuthenticated } = useAuth();
+  const { role, isAuthenticated } = useAuth();
   const isAdmin = role === 'ADMIN';
 
   const [status, setStatus] = useState('PENDING');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
-  const [limit, setLimit] = useState(20);
+  const limit = 20;
   const [total, setTotal] = useState(0);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +30,7 @@ export default function AdminSubmissions() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionNotes, setActionNotes] = useState('');
 
-  const skip = useMemo(() => page * limit, [page, limit]);
+  const skip = page * limit;
 
   const load = useCallback(async () => {
     if (!isAdmin) return;
@@ -233,4 +233,3 @@ export default function AdminSubmissions() {
     </div>
   );
 }
-

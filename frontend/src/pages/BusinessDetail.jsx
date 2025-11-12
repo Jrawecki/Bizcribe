@@ -44,7 +44,7 @@ export default function BusinessDetail() {
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         if (mounted) setBiz(data);
-      } catch (e) {
+      } catch {
         if (mounted) setError('Business not found');
       } finally {
         if (mounted) setLoading(false);

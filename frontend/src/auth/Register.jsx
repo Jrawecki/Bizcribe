@@ -52,7 +52,7 @@ export default function Register() {
         business,
       });
       nav('/');
-    } catch (e) {
+    } catch {
       setErr('Registration failed. Try a different email.');
     } finally {
       setLoading(false);

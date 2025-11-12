@@ -414,10 +414,17 @@ textarea::placeholder {
   background-color: transparent;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
   pointer-events: auto;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-.home-map__marker--leaflet {
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
+.home-map__marker--active {
+  filter: drop-shadow(0 10px 20px rgba(37, 99, 235, 0.55));
+  transform: scale(1.08);
+}
+
+.leaflet-div-icon.home-map__marker-wrapper {
+  background: transparent;
+  border: none;
 }
 
 .mini-map__marker {
@@ -435,31 +442,27 @@ textarea::placeholder {
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
 }
 
-.home-map__you-marker {
+.home-map__you-dot {
   position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  pointer-events: none;
-  color: #166534;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #1e3a8a;
+  border: 4px solid rgba(148, 163, 184, 0.9);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.55);
 }
 
-.home-map__you-marker svg {
-  width: 52px;
-  height: 52px;
-  stroke: #166534;
-  fill: none;
+.home-map__you-dot::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 2px solid rgba(148, 163, 184, 0.45);
 }
 
-.leaflet-div-icon.home-map__you-marker {
+.leaflet-div-icon.home-map__you-dot {
   background: transparent;
   border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .map-popup {

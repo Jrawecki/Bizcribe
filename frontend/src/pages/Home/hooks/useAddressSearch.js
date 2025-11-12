@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 const WILMINGTON_CENTER = { lat: 39.7391, lng: -75.5398 };
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -125,34 +125,35 @@ export function useAddressSearch() {
     []
   );
 
-  const search = useCallback(
-    debounce(async (value) => {
-      const trimmed = value ? value.trim() : '';
-      if (!trimmed || trimmed.length < 3 || lockedRef.current) {
-        setList([]);
-        setOpen(false);
-        return;
-      }
-      if (/^[\d\s-]+$/.test(trimmed)) {
-        const digitsOnly = trimmed.replace(/[^\d]/g, '');
-        if (digitsOnly.length < 5) {
+  const search = useMemo(
+    () =>
+      debounce(async (value) => {
+        const trimmed = value ? value.trim() : '';
+        if (!trimmed || trimmed.length < 3 || lockedRef.current) {
           setList([]);
           setOpen(false);
           return;
         }
-      }
-      setFetching(true);
-      try {
-        let results = await fetchMapboxSuggestions(trimmed);
-        if (!results.length) {
-          results = await fetchNominatimSuggestions(trimmed);
+        if (/^[\d\s-]+$/.test(trimmed)) {
+          const digitsOnly = trimmed.replace(/[^\d]/g, '');
+          if (digitsOnly.length < 5) {
+            setList([]);
+            setOpen(false);
+            return;
+          }
         }
-        setList(results);
-        setOpen(results.length > 0);
-      } finally {
-        setFetching(false);
-      }
-    }, 250),
+        setFetching(true);
+        try {
+          let results = await fetchMapboxSuggestions(trimmed);
+          if (!results.length) {
+            results = await fetchNominatimSuggestions(trimmed);
+          }
+          setList(results);
+          setOpen(results.length > 0);
+        } finally {
+          setFetching(false);
+        }
+      }, 250),
     []
   );
 
