@@ -5,11 +5,10 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import 'leaflet/dist/leaflet.css';
 import {
-  Disc2,
   ExternalLink,
   LocateFixed,
   MapPin,
-  Navigation,
+  MapPinHouse,
   Phone,
   Search,
   SlidersHorizontal,
@@ -19,7 +18,6 @@ import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import { useAddressSearch } from './hooks/useAddressSearch.js';
-import pinDropUrl from '../../assets/pin_drop.png';
 import {
   MAPBOX_TOKEN,
   MAPBOX_DEFAULT_STYLE,
@@ -43,14 +41,41 @@ const toLngLatTuple = (point) => (hasCoordinates(point) ? [point.lng, point.lat]
 
 const toLeafletTuple = (point) => (hasCoordinates(point) ? [point.lat, point.lng] : null);
 
-const createMarkerElement = (title = 'Location pin') => {
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const HOME_MIN_ZOOM = 7;
+const MARKER_HIDE_ZOOM = 8;
+const markerScaleForZoom = (zoom = DEFAULT_ZOOM) =>
+  clamp(0.6 + ((zoom - MARKER_HIDE_ZOOM) * 0.1), 0.6, 1.15);
+
+const createMarkerElement = (title = 'Location pin', variant = 'business') => {
   if (typeof document === 'undefined') return null;
-  const el = document.createElement('div');
-  el.className = 'home-map__marker';
-  el.style.backgroundImage = `url(${pinDropUrl})`;
+  const el = document.createElement(variant === 'business' ? 'button' : 'div');
+  if (variant === 'business') {
+    el.type = 'button';
+  }
+  el.className = `map-marker-icon map-marker-icon--${variant}`;
   el.setAttribute('aria-label', title);
-  el.setAttribute('role', 'img');
+  if (variant !== 'business') {
+    el.setAttribute('role', 'img');
+  }
+  el.style.setProperty('--marker-scale', '1');
+  el.style.pointerEvents = variant === 'business' ? 'auto' : 'none';
+  const root = createRoot(el);
+  const Icon = variant === 'you' ? MapPinHouse : MapPin;
+  root.render(<Icon className="map-marker-icon__svg" size={28} strokeWidth={2.2} />);
+  el.__markerRoot = root;
+  el.__markerVariant = variant;
   return el;
+};
+
+const cleanupMarkerElement = (marker) => {
+  if (!marker || typeof marker.getElement !== 'function') return;
+  const el = marker.getElement();
+  if (el && el.__markerRoot) {
+    scheduleRootUnmount(el.__markerRoot);
+    el.__markerRoot = null;
+  }
 };
 
 const defer = (fn) => {
@@ -141,7 +166,18 @@ function MapPopupContent({ info, onCloseup }) {
         <span className="map-popup__icon">
           <MapPin size={16} strokeWidth={1.8} />
         </span>
-        <span>{info.address}</span>
+        {info.directionsHref ? (
+          <a
+            className="map-popup__link"
+            href={info.directionsHref}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {info.address}
+          </a>
+        ) : (
+          <span>{info.address}</span>
+        )}
       </div>,
     );
   }
@@ -166,32 +202,14 @@ function MapPopupContent({ info, onCloseup }) {
     info.detailHref ? (
       <a key="view" className="map-popup__action" href={info.detailHref}>
         <ExternalLink size={16} strokeWidth={1.8} />
-        <span>View</span>
+        <span>Details</span>
       </a>
     ) : null,
-    info.callHref ? (
-      <a key="call" className="map-popup__action" href={info.callHref}>
-        <Phone size={16} strokeWidth={1.8} />
-        <span>Call</span>
-      </a>
-    ) : null,
-    (
-      <a
-        key="directions"
-        className="map-popup__action map-popup__action--primary map-popup__action--directions"
-        href={info.directionsHref}
-        target="_blank"
-        rel="noreferrer"
-      >
-        <Navigation size={16} strokeWidth={1.8} />
-        <span>Directions</span>
-      </a>
-    ),
     (
       <button
         key="closeup"
         type="button"
-        className="map-popup__action map-popup__action--focus"
+        className="map-popup__action map-popup__action--ghost"
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -199,13 +217,13 @@ function MapPopupContent({ info, onCloseup }) {
         }}
       >
         <ZoomIn size={16} strokeWidth={1.8} />
-        <span>View close-up</span>
+        <span>Zoom map</span>
       </button>
     ),
   ].filter(Boolean);
 
   return (
-    <div className="map-popup map-popup--business">
+    <div className="map-popup">
       <div className="map-popup__header">
         <div className="map-popup__title-stack">
           {info.detailHref ? (
@@ -215,6 +233,7 @@ function MapPopupContent({ info, onCloseup }) {
           ) : (
             <div className="map-popup__title">{info.name}</div>
           )}
+          {info.address && <div className="map-popup__subtitle">{info.address}</div>}
         </div>
         {info.distanceLabel ? <span className="map-popup__pill">{info.distanceLabel}</span> : null}
       </div>
@@ -624,10 +643,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] flex-1 min-h-[520px] lg:min-h-[620px] items-start">
+            <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] flex-1 min-h-[520px] lg:min-h-[620px] items-start">
               <div
                 ref={mapSectionRef}
-                className="rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden h-[55vh] md:h-[60vh] lg:h-[min(62vh,calc(100vh-150px))] lg:sticky lg:top-[96px] z-0"
+                className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden lg:sticky lg:top-[96px] z-0"
               >
                 <ResultsMap
                   center={center}
@@ -656,7 +675,7 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col h-full relative z-10">
+              <div className="home-results-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col relative z-10">
                 <header className="mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold">Nearby businesses</h2>
                 </header>
@@ -682,7 +701,7 @@ export default function Home() {
                     No results matched your filters. Try widening the radius or adjusting your search.
                   </div>
                 ) : (
-                  <ul className="space-y-4 overflow-y-auto pr-1 flex-1" role="list">
+                  <ul className="home-results-list space-y-4" role="list">
                     {filtered.map((biz) => {
                       const isFocused = focusedBusinessId === biz.id;
                       const distance = haversineMi(center, biz);
@@ -800,7 +819,6 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
   const mapRef = useRef(null);
   const markersRef = useRef(new Map());
   const youMarkerRef = useRef(null);
-  const youMarkerRootRef = useRef(null);
   const activePopupRef = useRef(null);
   const centerRef = useRef(center);
   const lastStyleRef = useRef(mapStyle);
@@ -810,13 +828,9 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
 
   const removeYouMarker = useCallback(() => {
     if (youMarkerRef.current) {
+      cleanupMarkerElement(youMarkerRef.current);
       youMarkerRef.current.remove();
       youMarkerRef.current = null;
-    }
-    if (youMarkerRootRef.current) {
-      const root = youMarkerRootRef.current;
-      youMarkerRootRef.current = null;
-      scheduleRootUnmount(root);
     }
   }, []);
 
@@ -906,6 +920,35 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
     }
   }, [focusBusiness, mapboxFailed, center, mapStyle, onCloseup]);
 
+  const updateMapboxMarkerAppearance = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const zoom = map.getZoom();
+    const hideBusinessMarkers = zoom < MARKER_HIDE_ZOOM;
+    const markerScale = markerScaleForZoom(zoom);
+
+    markersRef.current.forEach((marker) => {
+      if (typeof marker.getElement !== 'function') return;
+      const el = marker.getElement();
+      if (!el) return;
+      if (hideBusinessMarkers) {
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+      } else {
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+        el.style.setProperty('--marker-scale', markerScale.toString());
+      }
+    });
+
+    if (youMarkerRef.current && typeof youMarkerRef.current.getElement === 'function') {
+      const el = youMarkerRef.current.getElement();
+      if (el) {
+        el.style.setProperty('--marker-scale', markerScale.toString());
+      }
+    }
+  }, []);
+
   const rebuildMarkers = useCallback(() => {
     if (mapboxFailed || !mapRef.current) return;
     markersRef.current.forEach((marker) => {
@@ -916,6 +959,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
           popup.__unmount = null;
         }
       }
+      cleanupMarkerElement(marker);
       marker.remove();
     });
     markersRef.current.clear();
@@ -930,11 +974,9 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
 
     (items || []).forEach((biz) => {
       if (typeof biz.lng !== 'number' || typeof biz.lat !== 'number') return;
-      const element = createMarkerElement(biz.name || 'Business location');
-      const marker =
-        element != null
-          ? new mapboxgl.Marker({ element, anchor: 'bottom' })
-          : new mapboxgl.Marker({ color: '#3b5f7c' });
+      const element = createMarkerElement(biz.name || 'Business location', 'business');
+      if (!element) return;
+      const marker = new mapboxgl.Marker({ element, anchor: 'bottom' });
 
       marker.setLngLat([biz.lng, biz.lat]);
 
@@ -964,8 +1006,9 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       }
     });
 
+    updateMapboxMarkerAppearance();
     focusOnBusiness();
-  }, [items, mapboxFailed, center, focusOnBusiness, onCloseup]);
+  }, [items, mapboxFailed, center, focusOnBusiness, onCloseup, updateMapboxMarkerAppearance]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -979,23 +1022,16 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       return;
     }
     if (!youMarkerRef.current) {
-      const element = document.createElement('div');
-      element.className = 'home-map__you-dot';
-      element.setAttribute('role', 'img');
-      element.setAttribute('aria-label', 'Your location');
-      element.title = 'You are here';
-      element.style.zIndex = '60';
-      element.style.pointerEvents = 'none';
-      const root = createRoot(element);
-      root.render(<Disc2 size={20} strokeWidth={3} color="#e0e7ff" />);
-      youMarkerRootRef.current = root;
-      const marker = new mapboxgl.Marker({ element, anchor: 'center' });
+      const element = createMarkerElement('Your location', 'you');
+      if (!element) return;
+      const marker = new mapboxgl.Marker({ element, anchor: 'bottom' });
       marker.setLngLat(coords).addTo(map);
       youMarkerRef.current = marker;
-      return;
+    } else {
+      youMarkerRef.current.setLngLat(coords);
     }
-    youMarkerRef.current.setLngLat(coords);
-  }, [center, mapboxFailed, removeYouMarker]);
+    updateMapboxMarkerAppearance();
+  }, [center, mapboxFailed, removeYouMarker, updateMapboxMarkerAppearance]);
 
   useEffect(() => {
     onMapboxStatusChange?.(!mapboxFailed);
@@ -1012,6 +1048,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
         style: mapboxStyleUrl(mapStyle),
         center: startingCenter,
         zoom: DEFAULT_ZOOM,
+        minZoom: HOME_MIN_ZOOM,
         attributionControl: false,
       });
       mapRef.current = map;
@@ -1037,6 +1074,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
             popup.__unmount = null;
           }
         }
+        cleanupMarkerElement(marker);
         marker.remove();
       });
       markersMap.clear();
@@ -1085,6 +1123,15 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
   useEffect(() => {
     rebuildMarkers();
   }, [rebuildMarkers]);
+
+  useEffect(() => {
+    if (mapboxFailed || !mapRef.current) return;
+    const map = mapRef.current;
+    const handleZoom = () => updateMapboxMarkerAppearance();
+    map.on('zoom', handleZoom);
+    handleZoom();
+    return () => map.off('zoom', handleZoom);
+  }, [mapboxFailed, updateMapboxMarkerAppearance]);
 
   useEffect(() => {
     focusOnBusiness();
@@ -1138,12 +1185,14 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
 function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
   const tileProps = osmTileProps();
   const mapCenter = center ? [center.lat, center.lng] : [WILMINGTON_CENTER.lat, WILMINGTON_CENTER.lng];
-  const zoom = center ? DEFAULT_ZOOM : 4;
+  const initialZoom = center ? DEFAULT_ZOOM : HOME_MIN_ZOOM + 1;
+  const zoom = Math.max(initialZoom, HOME_MIN_ZOOM + 1);
   const mapRef = useRef(null);
   const [leafletMap, setLeafletMap] = useState(null);
   const [overlayEl, setOverlayEl] = useState(null);
   const [projectedItems, setProjectedItems] = useState([]);
   const [projectedCenter, setProjectedCenter] = useState(null);
+  const [currentZoom, setCurrentZoom] = useState(zoom);
   const pendingCloseupRef = useRef(false);
   const popupRef = useRef(null);
 
@@ -1273,44 +1322,66 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
   }, [center, items, updateOverlayPositions]);
 
   useEffect(() => {
+    if (!leafletMap) return;
+    const handleZoomChange = () => setCurrentZoom(leafletMap.getZoom());
+    handleZoomChange();
+    leafletMap.on('zoom', handleZoomChange);
+    return () => leafletMap.off('zoom', handleZoomChange);
+  }, [leafletMap]);
+
+  useEffect(() => {
     if (!leafletMap || !center) return;
     const coords = toLeafletTuple(center);
     if (!coords) return;
     leafletMap.flyTo(coords, DEFAULT_ZOOM, { duration: 0.5 });
   }, [center, leafletMap]);
 
-  const markerOffset = { x: 18, y: 36 };
+  const overlayZoom = currentZoom ?? DEFAULT_ZOOM;
+  const businessScale = markerScaleForZoom(overlayZoom);
+  const youScale = markerScaleForZoom(overlayZoom + 0.2);
+  const hideBusinessMarkers = overlayZoom < MARKER_HIDE_ZOOM;
+  const baseSize = 28;
+  const translateStyle = (point, scale) => ({
+    transform: `translate(${point.x - (baseSize * scale) / 2}px, ${point.y - baseSize * scale}px)`,
+  });
 
   const overlayContent =
     overlayEl && projectedItems
       ? createPortal(
           <>
-            {projectedItems.map(({ biz, point }) => (
-              <button
-                type="button"
-                key={biz.id ?? `${point.x}-${point.y}`}
-                className={`home-map__marker-wrapper ${focusBusiness?.id === biz.id ? 'home-map__marker--active' : ''}`}
-                style={{
-                  transform: `translate(${point.x - markerOffset.x}px, ${point.y - markerOffset.y}px)`,
-                  pointerEvents: 'auto',
-                }}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openLeafletPopup(biz);
-                }}
-              >
-                <MapPin size={20} strokeWidth={2.2} />
-              </button>
-            ))}
+            {!hideBusinessMarkers &&
+              projectedItems.map(({ biz, point }) => (
+                <button
+                  type="button"
+                  key={biz.id ?? `${point.x}-${point.y}`}
+                  className={`map-marker-icon map-marker-icon--business${
+                    focusBusiness?.id === biz.id ? ' map-marker-icon--active' : ''
+                  }`}
+                  style={{
+                    position: 'absolute',
+                    pointerEvents: 'auto',
+                    ...translateStyle(point, businessScale),
+                    '--marker-scale': businessScale,
+                  }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openLeafletPopup(biz);
+                  }}
+                >
+                  <MapPin className="map-marker-icon__svg" size={28} strokeWidth={2.2} />
+                </button>
+              ))}
             {projectedCenter && (
               <div
-                className="home-map__you-dot"
+                className="map-marker-icon map-marker-icon--you"
                 style={{
-                  transform: `translate(${projectedCenter.x - 12}px, ${projectedCenter.y - 12}px)`,
+                  position: 'absolute',
                   pointerEvents: 'none',
+                  ...translateStyle(projectedCenter, youScale),
+                  '--marker-scale': youScale,
                 }}
               >
-                <Disc2 size={20} strokeWidth={3} color="#e0e7ff" />
+                <MapPinHouse className="map-marker-icon__svg" size={28} strokeWidth={2.2} />
               </div>
             )}
           </>,
@@ -1323,12 +1394,15 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
       <MapContainer
         center={mapCenter}
         zoom={zoom}
+        minZoom={HOME_MIN_ZOOM}
         scrollWheelZoom
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
         whenCreated={(map) => {
           mapRef.current = map;
+          map.setMinZoom(HOME_MIN_ZOOM);
           setLeafletMap(map);
+          setCurrentZoom(map.getZoom());
         }}
       >
         <TileLayer {...tileProps} />

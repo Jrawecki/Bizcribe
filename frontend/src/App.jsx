@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom';
+import { ScrollText } from 'lucide-react';
 import Home from './pages/Home/Home.jsx';
 import MapPage from './pages/MapPage.jsx';
 import GarageSale from './pages/GarageSale.jsx';
@@ -21,15 +22,21 @@ function Header() {
   const { isAuthenticated, user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  const userButtonRef = useRef(null);
+  const menuButtonRef = useRef(null);
   const menuPanelRef = useRef(null);
   const [menuRect, setMenuRect] = useState(null);
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const primaryNavLinks = [
+    { to: '/register-business', label: 'Add Business' },
+    { to: '/about', label: 'About' },
+    { to: '/contact', label: 'Contact' },
+  ];
 
   useEffect(() => {
     if (!menuOpen) return;
     const handleClick = (event) => {
       const menuEl = menuRef.current;
-      const buttonEl = userButtonRef.current;
+      const buttonEl = menuButtonRef.current;
       const panelEl = menuPanelRef.current;
       if (
         menuEl &&
@@ -47,21 +54,12 @@ function Header() {
   useEffect(() => {
     if (!menuOpen || typeof window === 'undefined') return undefined;
     const updateRect = () => {
-      const buttonEl = userButtonRef.current;
+      const buttonEl = menuButtonRef.current;
       if (!buttonEl) return;
       const rect = buttonEl.getBoundingClientRect();
-      const panelWidth = Math.max(rect.width, 200);
-      const viewportLeft = window.scrollX + 16;
-      const viewportRight = window.scrollX + window.innerWidth - 16;
-      const preferredLeft = rect.left + window.scrollX;
-      const clampedLeft = Math.min(
-        Math.max(preferredLeft, viewportLeft),
-        viewportRight - panelWidth,
-      );
       setMenuRect({
-        top: rect.bottom + window.scrollY + 10,
-        left: clampedLeft,
-        width: panelWidth,
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX,
       });
     };
     updateRect();
@@ -73,85 +71,121 @@ function Header() {
     };
   }, [menuOpen]);
 
-  const navClass = ({ isActive }) => `nav-pill ${isActive ? 'active' : ''}`;
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mq = window.matchMedia('(max-width: 640px)');
+    const update = () => setNavCollapsed(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  const navClass = ({ isActive }, extra = '') =>
+    `nav-pill ${isActive ? 'active' : ''} ${extra}`.trim();
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className="w-full border-b border-transparent bg-[var(--bg)]/60 backdrop-blur-xl sticky top-0 z-40">
-      <div className="w-full px-6 lg:px-10 py-5 flex items-center gap-4 flex-wrap">
-        <Link to="/" className="brand-mark mr-auto" onClick={closeMenu}>
+    <header className="app-header">
+      <div className="app-header__inner" ref={menuRef}>
+        <Link to="/" className="brand-mark" onClick={closeMenu}>
           <span className="brand-mark__initial">B</span>
           <span className="brand-mark__rest">izscribe</span>
         </Link>
 
-        <nav className="flex items-center gap-2 flex-wrap justify-center mx-auto">
-          <NavLink to="/garage-sale" className={navClass} onClick={closeMenu}>
-            Garage Sale
-          </NavLink>
-          <NavLink to="/register-business" className={navClass} onClick={closeMenu}>
-            Add Business
-          </NavLink>
-          <NavLink to="/about" className={navClass} onClick={closeMenu}>
-            About
-          </NavLink>
-          <NavLink to="/contact" className={navClass} onClick={closeMenu}>
-            Contact
-          </NavLink>
+        <nav className={`header-nav${navCollapsed ? ' header-nav--hidden' : ''}`}>
+          {primaryNavLinks.map(({ to, label, className: extraClass = '' }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={(args) => navClass(args, extraClass)}
+              onClick={closeMenu}
+            >
+              {label}
+            </NavLink>
+          ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3" ref={menuRef}>
-          {isAuthenticated ? (
-            <div className="relative inline-flex">
-              <button
-                type="button"
-                className="user-trigger"
-                ref={userButtonRef}
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                <span className="user-trigger__name">{user.display_name || user.email}</span>
-                <span className="caret" />
-              </button>
+        <div className="header-menu">
+          <button
+            type="button"
+            className="menu-trigger"
+            ref={menuButtonRef}
+            aria-label="Open account menu"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <ScrollText aria-hidden="true" />
+          </button>
+        </div>
 
-              {menuOpen && menuRect &&
-                createPortal(
-                  <div
-                    ref={menuPanelRef}
-                    className="dropdown-panel dropdown-panel--menu"
-                    style={{ top: menuRect.top, left: menuRect.left, width: menuRect.width }}
-                  >
+        {menuOpen && menuRect &&
+          createPortal(
+            <div
+              ref={menuPanelRef}
+              className="dropdown-panel dropdown-panel--menu header-menu__panel"
+              style={{ top: menuRect.top, left: menuRect.left }}
+            >
+              <div className="header-menu__group">
+                <Link to="/register-business" className="header-menu__link" onClick={closeMenu}>
+                  Add Business
+                </Link>
+                <Link to="/garage-sale" className="header-menu__link" onClick={closeMenu}>
+                  Garage Sale
+                </Link>
+              </div>
+              {navCollapsed && (
+                <div className="header-menu__group">
+                  {primaryNavLinks
+                    .filter(({ to }) => to !== '/register-business')
+                    .map(({ to, label }) => (
+                      <Link key={to} to={to} className="header-menu__link" onClick={closeMenu}>
+                        {label}
+                      </Link>
+                    ))}
+                </div>
+              )}
+              <div className="header-menu__divider" />
+              <div className="header-menu__group">
+                <p className="header-menu__label">Account</p>
+                {isAuthenticated ? (
+                  <>
+                    <div className="header-menu__identity">
+                      Signed in as <strong>{user.display_name || user.email}</strong>
+                    </div>
+                    <Link to="/my/submissions" className="header-menu__link" onClick={closeMenu}>
+                      My Submissions
+                    </Link>
                     {user?.role === 'ADMIN' && (
-                      <Link to="/admin/submissions" className="dropdown-link" onClick={closeMenu}>
+                      <Link to="/admin/submissions" className="header-menu__link" onClick={closeMenu}>
                         Admin
                       </Link>
                     )}
-                    <Link to="/my/submissions" className="dropdown-link" onClick={closeMenu}>
-                      My Submissions
-                    </Link>
                     <button
                       type="button"
-                      className="dropdown-link"
+                      className="header-menu__link"
                       onClick={() => {
                         logout();
                         closeMenu();
                       }}
                     >
-                      Logout
+                      Sign out
                     </button>
-                  </div>,
-                  document.body,
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="header-menu__link" onClick={closeMenu}>
+                      Sign in
+                    </Link>
+                    <Link to="/register" className="header-menu__link" onClick={closeMenu}>
+                      Sign up
+                    </Link>
+                  </>
                 )}
-            </div>
-          ) : (
-            <>
-              <Link to="/login" className="btn btn-ghost">
-                Sign in
-              </Link>
-              <Link to="/register" className="btn btn-primary">
-                Sign up
-              </Link>
-            </>
+              </div>
+            </div>,
+            document.body,
           )}
-        </div>
       </div>
     </header>
   );
