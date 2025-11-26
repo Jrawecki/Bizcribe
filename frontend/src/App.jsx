@@ -27,7 +27,7 @@ function Header() {
   const [menuRect, setMenuRect] = useState(null);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const primaryNavLinks = [
-    { to: '/register-business', label: 'Add Business' },
+    { to: '/register-business', label: 'Add Business', className: 'nav-pill--cta' },
     { to: '/about', label: 'About' },
     { to: '/contact', label: 'Contact' },
   ];
@@ -194,10 +194,10 @@ function Header() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex flex-col h-screen bg-[var(--bg)] text-[var(--text)]">
+      <div className="flex flex-col min-h-screen bg-[var(--bg)] text-[var(--text)]">
         <Header />
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/garage-sale" element={<GarageSale />} />

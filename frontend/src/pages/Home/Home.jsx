@@ -569,84 +569,11 @@ export default function Home() {
       <main className="flex-1 flex flex-col">
         <section className="flex-1 pt-8 pb-16 lg:pt-10 lg:pb-20 px-2 sm:px-4 lg:px-6">
           <div className="w-full flex flex-col gap-8 lg:gap-10">
-            <div className="rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="relative flex-1 min-w-[220px] max-w-3xl">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
-                  <input
-                    value={what}
-                    onChange={(e) => setWhat(e.target.value)}
-                    type="text"
-                    placeholder="Search by name, product, or area..."
-                    className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                  />
-                </div>
-
-                <div className={`relative flex-1 min-w-[220px] max-w-md ${locationOpen ? 'z-50' : ''}`} ref={locationRef}>
-                  <div className="relative">
-                    <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
-                    <input
-                      type="text"
-                      value={addrQuery}
-                      onFocus={() => {
-                        setLocationOpen(true);
-                        unlockAddressInput();
-                        if (addrQuery) {
-                          setAddrQuery('');
-                        }
-                        setAddrOpen(true);
-                        setTimeout(updateLocationPanelRect, 0);
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setAddrQuery(value);
-                        unlockAddressInput();
-                        if (value && value.trim().length >= 2) {
-                          setAddrOpen(true);
-                          searchAddress(value);
-                        } else {
-                          setAddrOpen(false);
-                        }
-                      }}
-                      placeholder="Location"
-                      className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                    />
-                  </div>
-                </div>
-
-                <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRef}>
-                  <button
-                    type="button"
-                    className={`text-trigger ${filtersOpen ? 'text-[var(--ceramic)]' : ''}`}
-                    onClick={() =>
-                      setFiltersOpen((open) => {
-                        const next = !open;
-                        if (!open && next) {
-                          setTimeout(updateFiltersPanelRect, 0);
-                        }
-                        return next;
-                      })
-                    }
-                    aria-haspopup="true"
-                    aria-expanded={filtersOpen}
-                  >
-                    <SlidersHorizontal size={18} />
-                    <span className="text-base">Filters</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-sm text-white/70 text-center md:text-left mt-3">
-                {center
-                  ? `Showing ${filtered.length} result${filtered.length === 1 ? '' : 's'} within ${radiusMi} mi of ${centerLabel}.`
-                  : 'Choose a location to see nearby businesses.'}
-              </div>
-            </div>
 
             <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] flex-1 min-h-[520px] lg:min-h-[620px] items-start">
               <div
                 ref={mapSectionRef}
-                className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden lg:sticky lg:top-[96px] z-0"
+                className="home-map-panel order-1 lg:order-2 rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden lg:sticky lg:top-[96px] z-0"
               >
                 <ResultsMap
                   center={center}
@@ -675,7 +602,81 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="home-results-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col relative z-10">
+              <div className="home-search-card order-2 lg:order-1 lg:col-span-2 rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="relative flex-1 min-w-[220px] max-w-3xl">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
+                    <input
+                      value={what}
+                      onChange={(e) => setWhat(e.target.value)}
+                      type="text"
+                      placeholder="Search by name, product, or area..."
+                      className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
+                    />
+                  </div>
+
+                  <div className={`relative flex-1 min-w-[220px] max-w-md ${locationOpen ? 'z-50' : ''}`} ref={locationRef}>
+                    <div className="relative">
+                      <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
+                      <input
+                        type="text"
+                        value={addrQuery}
+                        onFocus={() => {
+                          setLocationOpen(true);
+                          unlockAddressInput();
+                          if (addrQuery) {
+                            setAddrQuery('');
+                          }
+                          setAddrOpen(true);
+                          setTimeout(updateLocationPanelRect, 0);
+                        }}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setAddrQuery(value);
+                          unlockAddressInput();
+                          if (value && value.trim().length >= 2) {
+                            setAddrOpen(true);
+                            searchAddress(value);
+                          } else {
+                            setAddrOpen(false);
+                          }
+                        }}
+                        placeholder="Location"
+                        className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRef}>
+                    <button
+                      type="button"
+                      className={`text-trigger ${filtersOpen ? 'text-[var(--ceramic)]' : ''}`}
+                      onClick={() =>
+                        setFiltersOpen((open) => {
+                          const next = !open;
+                          if (!open && next) {
+                            setTimeout(updateFiltersPanelRect, 0);
+                          }
+                          return next;
+                        })
+                      }
+                      aria-haspopup="true"
+                      aria-expanded={filtersOpen}
+                    >
+                      <SlidersHorizontal size={18} />
+                      <span className="text-base">Filters</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-sm text-white/70 text-center md:text-left mt-3">
+                  {center
+                    ? `Showing ${filtered.length} result${filtered.length === 1 ? '' : 's'} within ${radiusMi} mi of ${centerLabel}.`
+                    : 'Choose a location to see nearby businesses.'}
+                </div>
+              </div>
+
+              <div className="home-results-panel order-3 lg:order-2 rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col relative z-10">
                 <header className="mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold">Nearby businesses</h2>
                 </header>

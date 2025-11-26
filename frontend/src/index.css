@@ -177,7 +177,7 @@ textarea::placeholder {
   top: 0;
   z-index: 40;
   width: 100%;
-  background: transparent;
+  background: var(--bg);
 }
 
 .app-header__inner {
@@ -298,6 +298,27 @@ textarea::placeholder {
   color: var(--ceramic);
   text-decoration: underline;
   text-underline-offset: 6px;
+}
+
+.nav-pill--cta {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: var(--text);
+  border: 1px solid transparent;
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.nav-pill--cta:hover,
+.nav-pill--cta:focus-visible {
+  filter: brightness(1.08);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(12, 16, 30, 0.45);
+}
+
+.nav-pill--cta.active {
+  text-decoration: none;
+  box-shadow: 0 10px 26px rgba(12, 16, 30, 0.55);
 }
 
 .menu-trigger {
