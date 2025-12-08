@@ -124,7 +124,11 @@ function Header() {
             <div
               ref={menuPanelRef}
               className="dropdown-panel dropdown-panel--menu header-menu__panel"
-              style={{ top: menuRect.top, left: menuRect.left }}
+              style={
+                navCollapsed
+                  ? { top: menuRect.top + 8, right: 12, left: 'auto', width: 'auto', maxWidth: '260px' }
+                  : { top: menuRect.top, left: menuRect.left }
+              }
             >
               <div className="header-menu__group">
                 <Link to="/register-business" className="header-menu__link" onClick={closeMenu}>

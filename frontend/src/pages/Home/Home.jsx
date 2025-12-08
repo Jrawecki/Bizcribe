@@ -264,8 +264,8 @@ function createPopupElement(info, onCloseup) {
 export default function Home() {
   const [what, setWhat] = useState('');
   const [radiusMi, setRadiusMi] = useState(5);
-  const [center, setCenter] = useState(null); // {lat,lng}
-  const [centerLabel, setCenterLabel] = useState('your location');
+  const [center, setCenter] = useState(WILMINGTON_CENTER); // {lat,lng}
+  const [centerLabel, setCenterLabel] = useState('Wilmington, DE');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -292,8 +292,41 @@ export default function Home() {
   const filtersRefDesktop = useRef(null);
   const filtersRefMobile = useRef(null);
   const mapSectionRef = useRef(null);
+  const locationDropdownPressRef = useRef(false);
+  const currentLocationRequestRef = useRef(false);
 
   const locationSuggestions = (addrList || []).slice(0, 10);
+
+  const applyCurrentLocation = useCallback(
+    (options = {}) => {
+      if (!navigator?.geolocation) return;
+      const { skipIfLocked = false } = options;
+      if (skipIfLocked && centerLockedRef.current) return;
+      const previousQuery = addrQuery;
+      currentLocationRequestRef.current = true;
+      setAddrQuery('Current location', { keepLocked: true });
+      lockAddressInput();
+      setAddrOpen(false);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          centerLockedRef.current = true;
+          setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setCenterLabel('your location');
+          setLocationOpen(false);
+          setAddrOpen(false);
+          setAddrQuery('Current location', { keepLocked: true });
+          currentLocationRequestRef.current = false;
+        },
+        () => {
+          setAddrQuery(previousQuery || '', { keepLocked: true });
+          unlockAddressInput();
+          currentLocationRequestRef.current = false;
+        },
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 },
+      );
+    },
+    [addrQuery, lockAddressInput, setAddrOpen, setAddrQuery, setCenter, setCenterLabel, setLocationOpen, unlockAddressInput],
+  );
 
   useEffect(() => {
     const savedWhat = localStorage.getItem('home_what');
@@ -311,7 +344,7 @@ export default function Home() {
             navigator.geolocation.getCurrentPosition(
               (pos) => {
                 if (cancelled) return;
-                if (!centerLockedRef.current && !center) {
+                if (!centerLockedRef.current) {
                   setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
                   setCenterLabel('your location');
                   setAddrQuery('Current location', { keepLocked: true });
@@ -327,16 +360,10 @@ export default function Home() {
       }
     })();
     return () => { cancelled = true; };
-  }, [center, setAddrQuery]);
+  }, [setAddrQuery]);
 
   useEffect(() => {
     const handler = (event) => {
-      const locationAnchors = [locationRefDesktop.current, locationRefMobile.current].filter(Boolean);
-      const clickedInsideLocation = locationAnchors.some((el) => el.contains(event.target));
-      if (!clickedInsideLocation) {
-        setLocationOpen(false);
-        setAddrOpen(false);
-      }
       const filterAnchors = [filtersRefDesktop.current, filtersRefMobile.current].filter(Boolean);
       const clickedInsideFilters = filterAnchors.some((el) => el.contains(event.target));
       if (!clickedInsideFilters) setFiltersOpen(false);
@@ -362,10 +389,19 @@ export default function Home() {
     const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
     if (!visible) return;
     const rect = visible.getBoundingClientRect();
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 9999;
+    const margin = 12;
+    const maxWidth = vw - margin * 2;
+    const width = Math.min(Math.max(rect.width, 220), maxWidth);
+    let left = rect.left;
+    if (left + width > vw - margin) {
+      left = vw - margin - width;
+    }
+    left = Math.max(margin, left);
     setFiltersPanelRect({
       top: rect.bottom + 8,
-      left: rect.left,
-      width: Math.max(rect.width, 220),
+      left,
+      width,
     });
   }, []);
 
@@ -400,6 +436,38 @@ export default function Home() {
       window.removeEventListener('scroll', handler, true);
     };
   }, [filtersOpen, updateFiltersPanelRect]);
+
+  useEffect(() => {
+    if ((!filtersOpen && !locationOpen) || typeof window === 'undefined') return undefined;
+    return undefined;
+  }, [filtersOpen, locationOpen]);
+
+  useEffect(() => {
+    if ((!filtersOpen && !locationOpen) || typeof document === 'undefined') return undefined;
+    const handleOutsideInteraction = (event) => {
+      const target = event.target;
+      const anchorEls = [
+        filtersRefDesktop.current,
+        filtersRefMobile.current,
+        locationRefDesktop.current,
+        locationRefMobile.current,
+      ].filter(Boolean);
+      const insideAnchor = anchorEls.some((el) => el.contains(target));
+      const insideDropdown = target.closest?.('.dropdown-panel');
+      if (insideAnchor || insideDropdown) return;
+      if (filtersOpen) setFiltersOpen(false);
+      if (locationOpen) {
+        setLocationOpen(false);
+        setAddrOpen(false);
+      }
+    };
+    document.addEventListener('touchstart', handleOutsideInteraction, true);
+    document.addEventListener('mousedown', handleOutsideInteraction, true);
+    return () => {
+      document.removeEventListener('touchstart', handleOutsideInteraction, true);
+      document.removeEventListener('mousedown', handleOutsideInteraction, true);
+    };
+  }, [filtersOpen, locationOpen, setAddrOpen]);
 
   useEffect(() => {
     if (!filtersOpen) setFiltersPanelRect(null);
@@ -477,33 +545,19 @@ export default function Home() {
         <div
           className="dropdown-panel dropdown-panel--overlay"
           style={{ top: locationPanelRect.top, left: locationPanelRect.left, width: locationPanelRect.width }}
-          onMouseDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => {
+            locationDropdownPressRef.current = true;
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            locationDropdownPressRef.current = true;
+            e.stopPropagation();
+          }}
         >
           <button
             type="button"
             className="dropdown-item dropdown-item--action"
-            onClick={() => {
-              if (!navigator?.geolocation) return;
-              const previousQuery = addrQuery;
-              setAddrQuery('Current location', { keepLocked: true });
-              lockAddressInput();
-              setAddrOpen(false);
-              navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                  centerLockedRef.current = true;
-                  setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                  setCenterLabel('your location');
-                  setLocationOpen(false);
-                  setAddrOpen(false);
-                  setAddrQuery('Current location', { keepLocked: true });
-                },
-                () => {
-                  setAddrQuery(previousQuery || '', { keepLocked: true });
-                  unlockAddressInput();
-                },
-                { enableHighAccuracy: true }
-              );
-            }}
+            onClick={() => applyCurrentLocation({ skipIfLocked: false })}
           >
             Use current location
           </button>
@@ -569,7 +623,7 @@ export default function Home() {
 
   return (
     <>
-    <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text)]">
+    <div className="min-h-[100svh] min-h-[100dvh] flex flex-col bg-[var(--bg)] text-[var(--text)]">
       <main className="flex-1 flex flex-col">
         <section className="flex-1 pt-8 pb-16 lg:pt-10 lg:pb-20 px-2 sm:px-4 lg:px-6">
           <div className="w-full flex flex-col gap-8 lg:gap-10">
@@ -600,17 +654,43 @@ export default function Home() {
                         }
                         setAddrOpen(true);
                         setTimeout(updateLocationPanelRect, 0);
+                        const shouldAutoLocate =
+                          !centerLockedRef.current && (!addrQuery || addrQuery === 'Current location');
+                        if (shouldAutoLocate && !currentLocationRequestRef.current) {
+                          if (navigator?.permissions?.query) {
+                            navigator.permissions
+                              .query({ name: 'geolocation' })
+                              .then((status) => {
+                                if (status.state === 'granted') {
+                                  applyCurrentLocation({ skipIfLocked: false });
+                                }
+                              })
+                              .catch(() => {});
+                          } else {
+                            applyCurrentLocation({ skipIfLocked: false });
+                          }
+                        }
                       }}
                       onChange={(e) => {
                         const value = e.target.value;
                         setAddrQuery(value);
                         unlockAddressInput();
+                        setLocationOpen(true);
                         if (value && value.trim().length >= 2) {
                           setAddrOpen(true);
                           searchAddress(value);
                         } else {
                           setAddrOpen(false);
                         }
+                      }}
+                      onBlur={() => {
+                        if (locationDropdownPressRef.current) {
+                          // allow clicks inside the dropdown without closing
+                          locationDropdownPressRef.current = false;
+                          return;
+                        }
+                        setLocationOpen(false);
+                        setAddrOpen(false);
                       }}
                       placeholder="Location"
                       className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
@@ -680,31 +760,56 @@ export default function Home() {
                       <input
                         type="text"
                         value={addrQuery}
-                        onFocus={() => {
-                          setLocationOpen(true);
-                          unlockAddressInput();
-                          if (addrQuery) {
-                            setAddrQuery('');
-                          }
-                          setAddrOpen(true);
-                          setTimeout(updateLocationPanelRect, 0);
-                        }}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setAddrQuery(value);
-                          unlockAddressInput();
-                          if (value && value.trim().length >= 2) {
-                            setAddrOpen(true);
-                            searchAddress(value);
+                      onFocus={() => {
+                        setLocationOpen(true);
+                        unlockAddressInput();
+                        if (addrQuery) {
+                          setAddrQuery('');
+                        }
+                        setAddrOpen(true);
+                        setTimeout(updateLocationPanelRect, 0);
+                        const shouldAutoLocate =
+                          !centerLockedRef.current && (!addrQuery || addrQuery === 'Current location');
+                        if (shouldAutoLocate && !currentLocationRequestRef.current) {
+                          if (navigator?.permissions?.query) {
+                            navigator.permissions
+                              .query({ name: 'geolocation' })
+                              .then((status) => {
+                                if (status.state === 'granted') {
+                                  applyCurrentLocation({ skipIfLocked: false });
+                                }
+                              })
+                              .catch(() => {});
                           } else {
-                            setAddrOpen(false);
+                            applyCurrentLocation({ skipIfLocked: false });
                           }
-                        }}
-                        placeholder="Location"
-                        className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                      />
-                    </div>
+                        }
+                      }}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setAddrQuery(value);
+                        unlockAddressInput();
+                        setLocationOpen(true);
+                        if (value && value.trim().length >= 2) {
+                          setAddrOpen(true);
+                          searchAddress(value);
+                        } else {
+                          setAddrOpen(false);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (locationDropdownPressRef.current) {
+                          locationDropdownPressRef.current = false;
+                          return;
+                        }
+                        setLocationOpen(false);
+                        setAddrOpen(false);
+                      }}
+                      placeholder="Location"
+                      className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
+                    />
                   </div>
+                </div>
 
                   <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRefMobile}>
                     <button
