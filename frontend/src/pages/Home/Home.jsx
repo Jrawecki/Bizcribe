@@ -537,6 +537,89 @@ export default function Home() {
     handleFocusBusiness(biz);
   }, [handleFocusBusiness]);
 
+  const mobilePeekList = (
+    <div className="lg:hidden px-2 sm:px-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-base font-semibold">Nearby businesses</h2>
+        {center && (
+          <span className="text-xs text-white/60">
+            {filtered.length} result{filtered.length === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
+      {!center ? (
+        <div className="text-sm text-white/60 pb-2">
+          Pick a location to discover small businesses around you.
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-sm text-white/60 pb-2">
+          No results matched your filters. Try widening the radius or adjusting your search.
+        </div>
+      ) : (
+        <div className="peek-cards" role="list">
+          {filtered.map((biz) => {
+            const distance = haversineMi(center, biz);
+            const dLabel = typeof distance === 'number' && Number.isFinite(distance)
+              ? `${distance.toFixed(1)} mi`
+              : '';
+            const directions = (typeof biz.lat === 'number' && typeof biz.lng === 'number')
+              ? `https://www.google.com/maps/search/?api=1&query=${biz.lat},${biz.lng}`
+              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(biz.location || biz.name)}`;
+            return (
+              <div
+                key={biz.id}
+                role="listitem"
+                className="peek-card"
+                onClick={() => handleFocusBusiness(biz)}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-base font-semibold truncate">{biz.name || 'Untitled'}</div>
+                    <div className="mt-1 text-xs text-white/60 flex items-center gap-1">
+                      <MapPin size={14} className="text-white/40 shrink-0" />
+                      <span className="truncate">{formatAddress(biz)}</span>
+                    </div>
+                    {biz.description && (
+                      <p className="mt-2 text-xs text-white/70 line-clamp-2">
+                        {biz.description}
+                      </p>
+                    )}
+                  </div>
+                  {dLabel && (
+                    <span className="chip text-[11px] px-2 py-0.5 shrink-0">
+                      {dLabel}
+                    </span>
+                  )}
+                </div>
+
+                <div className="peek-card__actions">
+                  {biz.phone_number && (
+                    <a
+                      href={`tel:${biz.phone_number}`}
+                      className="btn btn-ghost text-xs rounded-lg px-3 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Phone size={14} />
+                      Call
+                    </a>
+                  )}
+                  <a
+                    href={directions}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary text-xs rounded-lg px-3 py-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Directions
+                  </a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   const canUsePortal = typeof document !== 'undefined';
 
@@ -840,7 +923,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="home-results-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col relative z-10 order-3 lg:order-none h-full">
+              <div className="home-results-panel home-results-panel--desktop rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 hidden lg:flex flex-col relative z-10 order-3 lg:order-none h-full">
                 <header className="mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold">Nearby businesses</h2>
                 </header>
@@ -948,6 +1031,8 @@ export default function Home() {
                 )}
               </div>
             </div>
+
+            {mobilePeekList}
 
             <div className="rounded-3xl border border-[var(--border)] bg-gradient-to-r from-[var(--bg-panel)]/95 via-[var(--bg-alt)] to-[var(--bg-panel)]/95 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl">
               <div className="text-center md:text-left">
