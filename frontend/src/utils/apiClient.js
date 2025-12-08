@@ -29,6 +29,16 @@ export function getRefreshToken() {
   return localStorage.getItem(STORAGE_KEYS.refresh);
 }
 
+export async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchJson(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function refreshTokens() {
   const refresh = getRefreshToken();
   if (!refresh) throw new Error('No refresh token');

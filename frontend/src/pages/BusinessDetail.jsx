@@ -5,13 +5,15 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import '../utils/mapIconSetup.js';
 
 import { MAPBOX_TOKEN, MAPBOX_ENABLED, mapboxStyleUrl, osmTileProps } from '../utils/tiles.js';
+import { renderToString } from 'react-dom/server';
+import { MapPin } from 'lucide-react';
 
 mapboxgl.accessToken = MAPBOX_TOKEN || '';
 
 const DEFAULT_CENTER = { lat: 39.7391, lng: -75.5398 };
+const LUCIDE_PIN_HTML = renderToString(<MapPin size={28} strokeWidth={2.1} />);
 
 const escapeHtml = (value = '') =>
   String(value).replace(/[&<>"']/g, (char) =>
@@ -63,6 +65,16 @@ export default function BusinessDetail() {
   const mapCenter = hasCoords
     ? { lat: biz.lat, lng: biz.lng }
     : DEFAULT_CENTER;
+  const markerIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: 'leaflet-lucide-marker',
+        html: `<div style="color:#2563eb;display:flex;align-items:center;justify-content:center;width:32px;height:32px;transform:translateY(-4px);">${LUCIDE_PIN_HTML}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 28],
+      }),
+    [],
+  );
 
   const zoomToLocation = useCallback(() => {
     if (!hasCoords || !biz) return;
@@ -132,7 +144,11 @@ export default function BusinessDetail() {
 
       map.on('load', () => {
         map.resize();
-        markerRef.current = new mapboxgl.Marker({ color: '#3b5f7c' })
+        const el = document.createElement('div');
+        el.style.cssText =
+          'color:#2563eb;display:flex;align-items:center;justify-content:center;transform:translateY(-4px);';
+        el.innerHTML = LUCIDE_PIN_HTML;
+        markerRef.current = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat([mapCenter.lng, mapCenter.lat])
           .setPopup(
             new mapboxgl.Popup({ offset: 12, closeButton: false }).setHTML(
@@ -232,7 +248,7 @@ export default function BusinessDetail() {
               detectRetina={tileProps.detectRetina}
             />
             {hasCoords && (
-              <Marker position={[biz.lat, biz.lng]}>
+              <Marker position={[biz.lat, biz.lng]} icon={markerIcon}>
                 <Popup>{biz.name}</Popup>
               </Marker>
             )}

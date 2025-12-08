@@ -1,6 +1,6 @@
 // frontend/src/auth/AuthContext.jsx
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchJson, setTokens, clearTokens, getAccessToken } from '../utils/apiClient.js';
+import { fetchJson, setTokens, clearTokens, getAccessToken, getRefreshToken } from '../utils/apiClient.js';
 
 const AuthCtx = createContext(null);
 
@@ -24,11 +24,33 @@ export function AuthProvider({ children }) {
 
   // On mount: if we have a token, try to load profile
   useEffect(() => {
-    if (getAccessToken()) {
+    const access = getAccessToken();
+    const refresh = getRefreshToken();
+    if (access) {
       loadMe();
-    } else {
-      setInitializing(false);
+      return;
     }
+    if (!refresh) {
+      setInitializing(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const data = await fetchJson('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refresh }),
+        });
+        setTokens(data);
+        setUser(data.user);
+      } catch {
+        clearTokens();
+        setUser(null);
+      } finally {
+        setInitializing(false);
+      }
+    })();
   }, [loadMe]);
 
   const login = useCallback(async (email, password) => {

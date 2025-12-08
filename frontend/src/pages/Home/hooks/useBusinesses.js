@@ -12,9 +12,7 @@ export function useBusinesses({ includeMine = false } = {}) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/businesses');
-      if (!res.ok) throw new Error('Failed to load businesses');
-      const data = await res.json();
+      const data = await fetchJson('/api/businesses');
       setBusinesses(data);
       setError(null);
     } catch (e) {

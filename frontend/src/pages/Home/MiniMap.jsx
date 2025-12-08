@@ -1,10 +1,8 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import '../../utils/mapIconSetup.js';
-import pinDropUrl from '../../assets/pin_drop.png';
 import {
   MAPBOX_TOKEN,
   MAPBOX_ENABLED,
@@ -12,11 +10,13 @@ import {
   mapboxStyleUrl,
   osmTileProps,
 } from '../../utils/tiles.js';
+import { renderToString } from 'react-dom/server';
+import { MapPin } from 'lucide-react';
 
 const WILMINGTON_CENTER = { lat: 39.7391, lng: -75.5398 };
 const DEFAULT_STYLE = MAPBOX_DEFAULT_STYLE;
 const SATELLITE_STYLE = 'mapbox/satellite-streets-v12';
-const MARKER_ICON_URL = pinDropUrl;
+const LUCIDE_PIN_HTML = renderToString(<MapPin size={28} strokeWidth={2.1} />);
 
 mapboxgl.accessToken = MAPBOX_TOKEN || '';
 
@@ -24,7 +24,8 @@ const createMarkerEl = () => {
   if (typeof document === 'undefined') return null;
   const el = document.createElement('div');
   el.className = 'mini-map__marker';
-  el.style.backgroundImage = `url(${pinDropUrl})`;
+  el.style.color = '#2563eb';
+  el.innerHTML = LUCIDE_PIN_HTML;
   el.setAttribute('role', 'img');
   el.setAttribute('aria-label', 'Selected location');
   return el;
@@ -221,6 +222,10 @@ const forceResizeSoon = useCallback(() => {
       currentStyleRef.current = DEFAULT_STYLE;
       forceResizeSoon();
 
+      // Zoom controls (minimal styling handled in CSS)
+      const nav = new mapboxgl.NavigationControl({ showCompass: false });
+      map.addControl(nav, 'bottom-right');
+
       const ensureResize = () => {
         map.resize();
       };
@@ -414,12 +419,11 @@ function LeafletMiniMap({ value, onChange, pinEnabled, registerCloseup }) {
   const tileProps = useMemo(() => osmTileProps(), []);
   const markerIcon = useMemo(
     () =>
-      L.icon({
-        iconUrl: MARKER_ICON_URL,
-        iconSize: [34, 34],
-        iconAnchor: [17, 34],
-        popupAnchor: [0, -28],
+      L.divIcon({
         className: 'mini-map__marker mini-map__marker--leaflet',
+        html: `<div style="color:#2563eb;display:flex;align-items:center;justify-content:center;width:32px;height:32px;transform:translateY(-4px);">${LUCIDE_PIN_HTML}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 28],
       }),
     [],
   );
@@ -454,7 +458,7 @@ function LeafletMiniMap({ value, onChange, pinEnabled, registerCloseup }) {
     const map = L.map(containerRef.current, {
       center: [WILMINGTON_CENTER.lat, WILMINGTON_CENTER.lng],
       zoom: 12,
-      zoomControl: false,
+      zoomControl: true,
     });
 
     L.tileLayer(tileProps.url, tileProps).addTo(map);

@@ -5,11 +5,6 @@ export const MAPBOX_DEFAULT_STYLE = 'mapbox/streets-v12';
 
 export const MAPBOX_STYLES = {
   Streets: 'mapbox/streets-v12',
-  'Neon Night (Mapbox)': 'mapbox/navigation-night-v1',
-  Outdoors: 'mapbox/outdoors-v12',
-  'Clean Light': 'mapbox/light-v11',
-  'Modern Dark': 'mapbox/dark-v11',
-  'Satellite Streets': 'mapbox/satellite-streets-v12',
 };
 
 export const MAPBOX_ENABLED = Boolean(MAPBOX_TOKEN);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { fetchJson } from '../utils/apiClient.js';
+import StateMessage from '../components/StateMessage.jsx';
 
 export default function MySubmissions() {
   const [items, setItems] = useState([]);
@@ -33,7 +34,11 @@ export default function MySubmissions() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">My Business Submissions</h1>
-      {error && <div className="mb-3 text-red-400">{error}</div>}
+      {error && (
+        <div className="mb-3">
+          <StateMessage variant="error">{error}</StateMessage>
+        </div>
+      )}
       <div className="overflow-auto border border-[#2a2d30] rounded-lg">
         <table className="min-w-full text-sm">
           <thead>
@@ -48,9 +53,9 @@ export default function MySubmissions() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="p-4" colSpan={6}>Loading…</td></tr>
+              <tr><td className="p-4" colSpan={6}><StateMessage variant="loading">Loading...</StateMessage></td></tr>
             ) : items.length === 0 ? (
-              <tr><td className="p-4" colSpan={6}>No submissions yet.</td></tr>
+              <tr><td className="p-4" colSpan={6}><StateMessage>No submissions yet.</StateMessage></td></tr>
             ) : (
               items.map((s) => (
                 <tr key={s.id} className="border-t border-[#2a2d30]">

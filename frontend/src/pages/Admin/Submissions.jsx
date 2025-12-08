@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { fetchJson } from '../../utils/apiClient.js';
+import StateMessage from '../../components/StateMessage.jsx';
 
 const STATUS_OPTIONS = ['PENDING', 'APPROVED', 'REJECTED'];
 
@@ -142,7 +143,9 @@ export default function AdminSubmissions() {
       </div>
 
       {error && (
-        <div className="mb-3 text-red-400">{error}</div>
+        <div className="mb-3">
+          <StateMessage variant="error">{error}</StateMessage>
+        </div>
       )}
 
       <div className="overflow-auto border border-[#2a2d30] rounded-lg">
@@ -160,9 +163,9 @@ export default function AdminSubmissions() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="p-4" colSpan={7}>Loading…</td></tr>
+              <tr><td className="p-4" colSpan={7}><StateMessage variant="loading">Loading...</StateMessage></td></tr>
             ) : items.length === 0 ? (
-              <tr><td className="p-4" colSpan={7}>No submissions found.</td></tr>
+              <tr><td className="p-4" colSpan={7}><StateMessage>No submissions found.</StateMessage></td></tr>
             ) : (
               items.map((s) => (
                 <tr key={s.id} className="border-t border-[#2a2d30]">
@@ -204,7 +207,7 @@ export default function AdminSubmissions() {
               <button className="btn-ghost rounded-full px-3 py-1" onClick={() => setSelected(null)}>Close</button>
             </div>
             {detailLoading ? (
-              <div className="p-4">Loading…</div>
+              <div className="p-4"><StateMessage variant="loading">Loading...</StateMessage></div>
             ) : (
               <div className="modal-scroll pr-1">
                 <div className="mb-3 text-sm opacity-80">ID #{selected.id} · Owner: {selected.owner?.email || selected.owner_id}</div>

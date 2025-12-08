@@ -4,6 +4,8 @@ const WILMINGTON_CENTER = { lat: 39.7391, lng: -75.5398 };
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 const MAPBOX_ENDPOINT = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 const NOMINATIM_ENDPOINT = 'https://nominatim.openstreetmap.org/search';
+const NOMINATIM_EMAIL = import.meta.env.VITE_NOMINATIM_EMAIL;
+const GEOCODE_PROXY = import.meta.env.VITE_GEOCODE_PROXY;
 
 const debounce = (fn, ms = 250) => {
   let t;
@@ -84,13 +86,16 @@ const fetchMapboxSuggestions = async (query) => {
 
 const fetchNominatimSuggestions = async (query) => {
   try {
-    const url = new URL(NOMINATIM_ENDPOINT);
+    const isProxy = Boolean(GEOCODE_PROXY);
+    const url = new URL(isProxy ? GEOCODE_PROXY : NOMINATIM_ENDPOINT);
     url.searchParams.set('q', query);
     url.searchParams.set('format', 'json');
     url.searchParams.set('addressdetails', '1');
     url.searchParams.set('limit', '8');
     url.searchParams.set('countrycodes', 'us');
-    url.searchParams.set('email', 'jrawecki31@gmail.com');
+    if (!isProxy && NOMINATIM_EMAIL) {
+      url.searchParams.set('email', NOMINATIM_EMAIL);
+    }
     const res = await fetch(url.toString(), { headers: { 'Accept-Language': 'en-US' } });
     if (!res.ok) {
       return [];

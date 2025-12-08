@@ -16,8 +16,9 @@
   --blue: #3b5f7c;
   --blue-soft: #2e4558;
   --ceramic: #d8ae70;
-  --home-map-height: clamp(320px, 56vh, calc(100vh - 220px));
-  --home-results-height: clamp(520px, 62vh, calc(100vh - 180px));
+  --home-map-height: clamp(320px, 55vh, 620px);
+  --home-results-height: clamp(420px, 55vh, 620px);
+  --map-row-height: clamp(420px, 55vh, 620px);
 }
 
 /* =====================================================
@@ -414,17 +415,25 @@ textarea::placeholder {
 ===================================================== */
 .home-results-grid {
   min-height: 0;
+  height: var(--map-row-height);
+}
+
+.home-results-grid > * {
+  height: 100%;
+  min-height: 0;
 }
 
 .home-map-panel {
-  height: var(--home-map-height);
+  height: 100%;
+  min-height: 0;
 }
 
 .home-results-panel {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: var(--home-results-height);
+  height: 100%;
+  min-height: 0;
 }
 
 .home-results-list {
@@ -436,6 +445,35 @@ textarea::placeholder {
 }
 
 @media (max-width: 1023px) {
+  .map-shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
+    padding: 0 12px 24px;
+  }
+
+  .map-list-panel {
+    width: 100%;
+    height: auto;
+  }
+
+  .home-results-grid {
+    height: auto;
+  }
+
+  .home-results-grid > * {
+    height: auto;
+    min-height: 0;
+  }
+
+  .home-map-panel {
+    height: var(--home-map-height);
+  }
+
+  .home-results-panel {
+    height: auto;
+  }
+
   :root {
     --home-map-height: clamp(240px, 40vh, 340px);
     --home-results-height: clamp(660px, 78vh, calc(100vh - 150px));
@@ -451,6 +489,108 @@ textarea::placeholder {
     --home-map-height: clamp(220px, 36vh, 300px);
     --home-results-height: clamp(760px, 90vh, calc(100vh - 120px));
   }
+}
+
+
+
+/* Map layout & list pairing */
+.map-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  align-items: stretch;
+  gap: 14px;
+  width: 100%;
+  height: var(--map-row-height);
+  min-height: 0;
+  padding: 0 12px 16px;
+}
+
+.map-shell > * {
+  height: 100%;
+  min-height: 0;
+}
+
+.map-canvas {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0f1012;
+}
+
+.map-canvas__inner {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.map-overlay {
+  position: absolute;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(6px);
+  color: white;
+}
+
+.map-overlay--center {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-overlay--left {
+  top: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.map-overlay--right {
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.map-overlay__label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.map-overlay__select {
+  background: #0f1012;
+  color: white;
+  border: 1px solid #2a2d30;
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.map-overlay__text {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.map-list-panel {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  padding-right: 12px;
+}
+
+.map-list-panel .panel {
+  height: 100%;
+  min-height: 0;
+  width: 100%;
 }
 
 /* =====================================================
@@ -868,12 +1008,35 @@ textarea::placeholder {
 
 .leaflet-container .leaflet-bar a,
 .leaflet-container .leaflet-control-zoom a {
-  background: rgba(15, 18, 28, 0.92) !important;
+  background: rgba(0, 0, 0, 0.35) !important;
   color: var(--text) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
 }
 
 .leaflet-container .leaflet-bar a:hover,
 .leaflet-container .leaflet-control-zoom a:hover {
-  filter: brightness(1.06) !important;
+  filter: brightness(1.1) !important;
+}
+
+/* Mapbox zoom controls */
+.mapboxgl-ctrl-group {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.mapboxgl-ctrl-group button {
+  background: rgba(0, 0, 0, 0.35) !important;
+  color: var(--text) !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+.mapboxgl-ctrl-group button + button {
+  margin-top: 4px;
+}
+
+.mapboxgl-ctrl button:hover {
+  filter: brightness(1.1) !important;
 }

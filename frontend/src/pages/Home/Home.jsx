@@ -12,6 +12,7 @@ import {
   Phone,
   Search,
   SlidersHorizontal,
+  Disc2,
   ZoomIn,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -25,11 +26,10 @@ import {
   osmTileProps,
   mapboxStyleUrl,
 } from '../../utils/tiles.js';
+import { fetchJsonWithTimeout } from '../../utils/apiClient.js';
 
 const WILMINGTON_CENTER = { lat: 39.7391, lng: -75.5398 };
 const DEFAULT_ZOOM = 12;
-const DARK_STYLE = 'mapbox/navigation-night-v1';
-const SATELLITE_STYLE = 'mapbox/satellite-streets-v12';
 
 mapboxgl.accessToken = MAPBOX_TOKEN || '';
 
@@ -274,8 +274,7 @@ export default function Home() {
   const [locationPanelRect, setLocationPanelRect] = useState(null);
   const [filtersPanelRect, setFiltersPanelRect] = useState(null);
   const [focusedBusinessId, setFocusedBusinessId] = useState(null);
-  const [mapStyle, setMapStyle] = useState(MAPBOX_DEFAULT_STYLE);
-  const [mapSupportsStyles, setMapSupportsStyles] = useState(MAPBOX_ENABLED);
+  const mapStyle = MAPBOX_DEFAULT_STYLE;
 
   const {
     state: {
@@ -288,8 +287,10 @@ export default function Home() {
     actions: { search: searchAddress, lock: lockAddressInput, unlock: unlockAddressInput },
   } = useAddressSearch();
   const centerLockedRef = useRef(false);
-  const locationRef = useRef(null);
-  const filtersRef = useRef(null);
+  const locationRefDesktop = useRef(null);
+  const locationRefMobile = useRef(null);
+  const filtersRefDesktop = useRef(null);
+  const filtersRefMobile = useRef(null);
   const mapSectionRef = useRef(null);
 
   const locationSuggestions = (addrList || []).slice(0, 10);
@@ -330,21 +331,25 @@ export default function Home() {
 
   useEffect(() => {
     const handler = (event) => {
-      if (locationRef.current && !locationRef.current.contains(event.target)) {
+      const locationAnchors = [locationRefDesktop.current, locationRefMobile.current].filter(Boolean);
+      const clickedInsideLocation = locationAnchors.some((el) => el.contains(event.target));
+      if (!clickedInsideLocation) {
         setLocationOpen(false);
         setAddrOpen(false);
       }
-      if (filtersRef.current && !filtersRef.current.contains(event.target)) {
-        setFiltersOpen(false);
-      }
+      const filterAnchors = [filtersRefDesktop.current, filtersRefMobile.current].filter(Boolean);
+      const clickedInsideFilters = filterAnchors.some((el) => el.contains(event.target));
+      if (!clickedInsideFilters) setFiltersOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [setAddrOpen]);
 
   const updateLocationPanelRect = useCallback(() => {
-    if (!locationRef.current) return;
-    const rect = locationRef.current.getBoundingClientRect();
+    const anchors = [locationRefDesktop.current, locationRefMobile.current].filter(Boolean);
+    const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
+    if (!visible) return;
+    const rect = visible.getBoundingClientRect();
     setLocationPanelRect({
       top: rect.bottom + 8,
       left: rect.left,
@@ -353,8 +358,10 @@ export default function Home() {
   }, []);
 
   const updateFiltersPanelRect = useCallback(() => {
-    if (!filtersRef.current) return;
-    const rect = filtersRef.current.getBoundingClientRect();
+    const anchors = [filtersRefDesktop.current, filtersRefMobile.current].filter(Boolean);
+    const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
+    if (!visible) return;
+    const rect = visible.getBoundingClientRect();
     setFiltersPanelRect({
       top: rect.bottom + 8,
       left: rect.left,
@@ -412,9 +419,7 @@ export default function Home() {
       url.searchParams.set('near', `${center.lat.toFixed(6)},${center.lng.toFixed(6)}`);
       url.searchParams.set('radius_km', String(toKm(radiusMi)));
       url.searchParams.set('limit', '200');
-      const res = await fetch(url.toString());
-      if (!res.ok) throw new Error('Failed to load nearby businesses');
-      const data = await res.json();
+      const data = await fetchJsonWithTimeout(url.toString());
       setItems(Array.isArray(data) ? data : []);
     } catch (e) {
       setError(e.message || 'Search failed');
@@ -461,9 +466,8 @@ export default function Home() {
 
   const handleCloseupRequest = useCallback((biz) => {
     if (!biz || typeof biz.lat !== 'number' || typeof biz.lng !== 'number') return;
-    setMapStyle((prev) => (prev === SATELLITE_STYLE ? prev : SATELLITE_STYLE));
     handleFocusBusiness(biz);
-  }, [handleFocusBusiness, setMapStyle]);
+  }, [handleFocusBusiness]);
 
 
   const canUsePortal = typeof document !== 'undefined';
@@ -582,7 +586,7 @@ export default function Home() {
                   />
                 </div>
 
-                <div className={`relative flex-1 min-w-[220px] max-w-md ${locationOpen ? 'z-50' : ''}`} ref={locationRef}>
+                <div className={`relative flex-1 min-w-[220px] max-w-md ${locationOpen ? 'z-50' : ''}`} ref={locationRefDesktop}>
                   <div className="relative">
                     <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
                     <input
@@ -614,7 +618,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRef}>
+                <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRefDesktop}>
                   <button
                     type="button"
                     className={`text-trigger ${filtersOpen ? 'text-[var(--ceramic)]' : ''}`}
@@ -643,36 +647,18 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] flex-1 min-h-[520px] lg:min-h-[620px] items-start">
+            <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-stretch">
               <div
                 ref={mapSectionRef}
-                className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden lg:sticky lg:top-[96px] z-0 order-1 lg:order-none"
+                className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-none h-full"
               >
                 <ResultsMap
                   center={center}
                   items={filtered}
                   focusBusiness={focusBusiness}
                   mapStyle={mapStyle}
-                  onMapboxStatusChange={setMapSupportsStyles}
                   onCloseup={handleCloseupRequest}
                 />
-                {mapSupportsStyles && (
-                  <div className="absolute top-4 right-4 z-20">
-                    <label htmlFor="home-map-style" className="sr-only">
-                      Map style
-                    </label>
-                    <select
-                      id="home-map-style"
-                      value={mapStyle}
-                      onChange={(event) => setMapStyle(event.target.value)}
-                      className="bg-[var(--bg-panel)]/90 border border-[var(--border)] text-sm rounded-xl px-3 py-2 text-white/90 focus:outline-none focus:ring-2 focus:ring-[var(--ceramic)]"
-                    >
-                      <option value={MAPBOX_DEFAULT_STYLE}>Streets</option>
-                      <option value={DARK_STYLE}>Neon Night</option>
-                      <option value={SATELLITE_STYLE}>Satellite Streets</option>
-                    </select>
-                  </div>
-                )}
               </div>
 
               <div className="home-search-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6 order-2 lg:order-none lg:hidden">
@@ -688,7 +674,7 @@ export default function Home() {
                     />
                   </div>
 
-                  <div className={`relative flex-1 min-w-[220px] ${locationOpen ? 'z-50' : ''}`} ref={locationRef}>
+                  <div className={`relative flex-1 min-w-[220px] ${locationOpen ? 'z-50' : ''}`} ref={locationRefMobile}>
                     <div className="relative">
                       <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
                       <input
@@ -720,7 +706,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRef}>
+                  <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRefMobile}>
                     <button
                       type="button"
                       className={`text-trigger ${filtersOpen ? 'text-[var(--ceramic)]' : ''}`}
@@ -749,7 +735,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="home-results-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col relative z-10 order-3 lg:order-none">
+              <div className="home-results-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 flex flex-col relative z-10 order-3 lg:order-none h-full">
                 <header className="mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold">Nearby businesses</h2>
                 </header>
@@ -887,7 +873,7 @@ export default function Home() {
   );
 }
 
-function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_STYLE, onMapboxStatusChange, onCloseup }) {
+function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_STYLE, onCloseup }) {
   const [mapboxFailed, setMapboxFailed] = useState(!MAPBOX_ENABLED);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -910,7 +896,6 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
 
   const focusOnBusiness = useCallback(() => {
     if (!focusBusiness || mapboxFailed || !mapRef.current) return;
-    if (pendingCloseupRef.current && mapStyle !== SATELLITE_STYLE) return;
     const coords = toLngLatTuple(focusBusiness);
     if (!coords) return;
     const [lng, lat] = coords;
@@ -1106,10 +1091,6 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
     }
     updateMapboxMarkerAppearance();
   }, [center, mapboxFailed, removeYouMarker, updateMapboxMarkerAppearance]);
-
-  useEffect(() => {
-    onMapboxStatusChange?.(!mapboxFailed);
-  }, [mapboxFailed, onMapboxStatusChange]);
 
   useEffect(() => {
     if (mapRef.current || mapboxFailed) return;

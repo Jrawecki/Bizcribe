@@ -1,20 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Supercluster from 'supercluster';
 import 'leaflet/dist/leaflet.css';
-import '../utils/mapIconSetup.js';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { renderToString } from 'react-dom/server';
+import { MapPin } from 'lucide-react';
+
+const LUCIDE_PIN_HTML = renderToString(<MapPin size={28} strokeWidth={2.1} />);
 
 import {
   MAPBOX_TOKEN,
   MAPBOX_DEFAULT_STYLE,
-  MAPBOX_STYLES,
   MAPBOX_ENABLED,
   mapboxStyleUrl,
   osmTileProps,
 } from '../utils/tiles.js';
+import { fetchJsonWithTimeout } from '../utils/apiClient.js';
 
 mapboxgl.accessToken = MAPBOX_TOKEN || '';
 
@@ -74,7 +77,6 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userCenter, setUserCenter] = useState(null);
-  const [styleId, setStyleId] = useState(MAPBOX_DEFAULT_STYLE);
   const [mapboxFailed, setMapboxFailed] = useState(!MAPBOX_ENABLED);
   const [dirty, setDirty] = useState(false);
   const [radiusMiles, setRadiusMiles] = useState(0);
@@ -85,12 +87,11 @@ export default function MapPage() {
   const markersRef = useRef([]);
   const clusterIndexRef = useRef(null);
   const geolocateRequestedRef = useRef(false);
-  const lastAppliedStyleRef = useRef(null);
+  const lastAppliedStyleRef = useRef(MAPBOX_DEFAULT_STYLE);
   const lastUserCenterRef = useRef(null);
 
+  const styleId = MAPBOX_DEFAULT_STYLE;
   const isMapboxActive = MAPBOX_ENABLED && !mapboxFailed;
-
-  const styleOptions = useMemo(() => Object.entries(MAPBOX_STYLES), []);
 
   const renderClusters = useCallback(() => {
     if (mapTypeRef.current !== 'mapbox') return;
@@ -113,12 +114,14 @@ export default function MapPage() {
       if (feature.properties.cluster) {
         const pointCount = feature.properties.point_count;
         const clusterId = feature.properties.cluster_id;
-        const size = 30 + Math.min(30, pointCount);
         const element = document.createElement('div');
         element.style.cssText =
-          'background:#3b5f7c;color:#fff;border-radius:9999px;display:flex;align-items:center;justify-content:center;' +
-          `width:${size}px;height:${size}px;border:2px solid rgba(255,255,255,.85);font-weight:600;font-size:13px;`;
-        element.textContent = String(pointCount);
+          'display:flex;align-items:center;justify-content:center;position:relative;color:#fff;';
+        element.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:50%;background:#1f2937;border:2px solid rgba(255,255,255,0.9);box-shadow:0 4px 10px rgba(0,0,0,0.35);position:relative;">
+            ${LUCIDE_PIN_HTML}
+            <span style="position:absolute;bottom:4px;right:4px;background:#2563eb;color:#fff;border-radius:9999px;padding:2px 6px;font-size:11px;font-weight:700;line-height:1;">${pointCount}</span>
+          </div>`;
         element.addEventListener('click', () => {
           if (!clusterIndexRef.current || mapTypeRef.current !== 'mapbox') return;
           const expansionZoom = Math.min(clusterIndexRef.current.getClusterExpansionZoom(clusterId), 20);
@@ -134,7 +137,11 @@ export default function MapPage() {
       const biz = businesses.find((b) => b.id === businessId);
       if (!biz) return;
 
-      const marker = new mapboxgl.Marker({ color: '#3b5f7c' }).setLngLat([lng, lat]);
+      const el = document.createElement('div');
+      el.style.cssText =
+        'color:#2563eb;display:flex;align-items:center;justify-content:center;transform:translateY(-4px);';
+      el.innerHTML = LUCIDE_PIN_HTML;
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]);
       marker.setPopup(new mapboxgl.Popup({ offset: 12, closeButton: false }).setHTML(createPopupHtml(biz)));
       marker.addTo(map);
       markersRef.current.push(marker);
@@ -149,17 +156,6 @@ export default function MapPage() {
       setError('');
       setDirty(false);
 
-      const fetchWithTimeout = async (url, options = {}, timeoutMs = 10000) => {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(url, { ...options, signal: controller.signal });
-          return res;
-        } finally {
-          clearTimeout(id);
-        }
-      };
-
       try {
         const bbox = toBboxString(bounds);
         let url = `/api/businesses/?bbox=${encodeURIComponent(bbox)}&limit=1000`;
@@ -173,21 +169,15 @@ export default function MapPage() {
           }
         }
 
-        const res = await fetchWithTimeout(url);
-        if (!res.ok) throw new Error(`Failed to load businesses (${res.status})`);
-        const data = await res.json();
+        const data = await fetchJsonWithTimeout(url);
         setBusinesses(data);
         setError('');
       } catch (err) {
         const fallbackMessage = err instanceof Error ? err.message : 'Failed to load businesses';
         try {
-          const fallback = await fetch('/api/businesses/?limit=100');
-          if (fallback.ok) {
-            setBusinesses(await fallback.json());
-            setError('');
-          } else {
-            setError(fallbackMessage);
-          }
+          const fallback = await fetchJsonWithTimeout('/api/businesses/?limit=100');
+          setBusinesses(fallback);
+          setError('');
         } catch {
           setError(fallbackMessage);
         }
@@ -305,21 +295,6 @@ export default function MapPage() {
   }, [isMapboxActive, loadForBounds, renderClusters]);
 
   useEffect(() => {
-    if (mapTypeRef.current !== 'mapbox') return;
-    const map = mapRef.current;
-    if (!map) return;
-    if (lastAppliedStyleRef.current === styleId) return;
-
-    lastAppliedStyleRef.current = styleId;
-    const nextStyle = mapboxStyleUrl(styleId);
-    map.setStyle(nextStyle);
-    map.once('styledata', () => {
-      map.resize();
-      renderClusters();
-    });
-  }, [styleId, renderClusters]);
-
-  useEffect(() => {
     const map = mapRef.current;
     if (!map || typeof map.getBounds !== 'function') return;
     loadForBounds(map.getBounds());
@@ -415,197 +390,88 @@ export default function MapPage() {
   const fallbackTileProps = useMemo(() => osmTileProps(), []);
 
   return (
-    <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
-      {loading && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: SEARCH_BUTTON_Z_INDEX,
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div className="px-4 py-2 rounded-full panel">Loading map...</div>
+    <div className="map-shell">
+      <div className="map-canvas">
+        <div className="map-overlay map-overlay--center">
+          {loading && <div className="px-4 py-2 rounded-full panel">Loading map...</div>}
+          {error && <div className="px-4 py-2 rounded-full panel text-red-300">Error: {error}</div>}
+          {dirty && (
+            <button className="px-4 py-2 rounded-full btn-primary shadow" onClick={handleSearchThisArea}>
+              Search this area
+            </button>
+          )}
         </div>
-      )}
 
-      {error && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: SEARCH_BUTTON_Z_INDEX,
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div className="px-4 py-2 rounded-full panel text-red-300">Error: {error}</div>
-        </div>
-      )}
-
-      {dirty && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: SEARCH_BUTTON_Z_INDEX,
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <button className="px-4 py-2 rounded-full btn-primary shadow" onClick={handleSearchThisArea}>
-            Search this area
-          </button>
-        </div>
-      )}
-
-      <div
-        style={{
-          position: 'absolute',
-          zIndex: SEARCH_BUTTON_Z_INDEX,
-          top: 12,
-          left: 12,
-          background: 'rgba(0,0,0,0.6)',
-          color: 'white',
-          padding: '8px 10px',
-          borderRadius: 12,
-          display: 'flex',
-          gap: 8,
-          alignItems: 'center',
-          backdropFilter: 'blur(6px)',
-        }}
-      >
-        <label htmlFor="radius" style={{ fontSize: 12, opacity: 0.8 }}>
-          Distance filter
-        </label>
-        <select
-          id="radius"
-          value={radiusMiles}
-          onChange={(ev) => setRadiusMiles(Number(ev.target.value))}
-          style={{
-            background: '#0f1012',
-            color: 'white',
-            border: '1px solid #2a2d30',
-            borderRadius: 8,
-            padding: '4px 8px',
-          }}
-        >
-          <option value={0}>Current view</option>
-          <option value={5}>Within 5 mi</option>
-          <option value={10}>Within 10 mi</option>
-          <option value={25}>Within 25 mi</option>
-        </select>
-      </div>
-
-      {isMapboxActive && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: SEARCH_BUTTON_Z_INDEX,
-            top: 12,
-            right: 12,
-            background: 'rgba(0,0,0,0.6)',
-            color: 'white',
-            padding: '8px 10px',
-            borderRadius: 12,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            minWidth: 180,
-            backdropFilter: 'blur(6px)',
-          }}
-        >
-          <label htmlFor="style" style={{ fontSize: 12, opacity: 0.8 }}>
-            Map style
+        <div className="map-overlay map-overlay--left">
+          <label htmlFor="radius" className="map-overlay__label">
+            Distance filter
           </label>
           <select
-            id="style"
-            value={styleId}
-            onChange={(e) => setStyleId(e.target.value)}
-            style={{
-              background: '#0f1012',
-              color: 'white',
-              border: '1px solid #2a2d30',
-              borderRadius: 8,
-              padding: '4px 8px',
-            }}
+            id="radius"
+            value={radiusMiles}
+            onChange={(ev) => setRadiusMiles(Number(ev.target.value))}
+            className="map-overlay__select"
           >
-            {styleOptions.map(([label, value]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
+            <option value={0}>Current view</option>
+            <option value={5}>Within 5 mi</option>
+            <option value={10}>Within 10 mi</option>
+            <option value={25}>Within 25 mi</option>
           </select>
         </div>
-      )}
 
-      {!isMapboxActive && MAPBOX_ENABLED && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: SEARCH_BUTTON_Z_INDEX,
-            top: 12,
-            right: 12,
-            background: 'rgba(0,0,0,0.6)',
-            color: 'white',
-            padding: '8px 10px',
-            borderRadius: 12,
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            backdropFilter: 'blur(6px)',
-          }}
-        >
-          <span style={{ fontSize: 12, opacity: 0.85 }}>Mapbox unavailable - using OSM fallback</span>
-          <button
-            type="button"
-            className="px-3 py-1 rounded-full btn-primary"
-            onClick={() => setMapboxFailed(false)}
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      <div style={{ position: 'absolute', inset: 0 }}>
-        {isMapboxActive ? (
-          <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-        ) : (
-          <LeafletFallbackMap
-            center={userCenter || WILMINGTON_CENTER}
-            businesses={businesses}
-            onReady={handleFallbackReady}
-            onMoveEnd={handleFallbackMoveEnd}
-            tileProps={fallbackTileProps}
-          />
+        {!isMapboxActive && MAPBOX_ENABLED && (
+          <div className="map-overlay map-overlay--right">
+            <span className="map-overlay__text">Mapbox unavailable - using OSM fallback</span>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full btn-primary"
+              onClick={() => setMapboxFailed(false)}
+            >
+              Retry
+            </button>
+          </div>
         )}
+
+        <div className="map-canvas__inner">
+          {isMapboxActive ? (
+            <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+          ) : (
+            <LeafletFallbackMap
+              center={userCenter || WILMINGTON_CENTER}
+              businesses={businesses}
+              onReady={handleFallbackReady}
+              onMoveEnd={handleFallbackMoveEnd}
+              tileProps={fallbackTileProps}
+            />
+          )}
+        </div>
       </div>
 
-      <aside
-        className="hidden md:block"
-        style={{ position: 'absolute', left: 12, top: 60, bottom: 12, width: 360, zIndex: SEARCH_BUTTON_Z_INDEX }}
-      >
-        <div className="panel rounded-xl h-full overflow-auto p-3">
-          <h3 className="text-lg font-semibold mb-2">Businesses in view</h3>
-          {loading ? (
-            <div className="text-sm opacity-70">Loading...</div>
-          ) : businesses.length === 0 ? (
-            <div className="text-sm opacity-70">No businesses in this area.</div>
-          ) : (
-            <ul className="space-y-2">
-              {businesses.slice(0, 100).map((b) => (
-                <li
-                  key={b.id}
-                  className="p-2 rounded-lg hover:bg-[#101113] cursor-pointer"
-                  onClick={() => handleBusinessFocus(b)}
-                >
-                  <div className="font-medium">{b.name}</div>
-                  <div className="text-xs opacity-80">{b.location}</div>
-                </li>
-              ))}
-            </ul>
-          )}
+      <aside className="map-list-panel hidden md:flex">
+        <div className="panel rounded-xl h-full w-full flex flex-col overflow-hidden">
+          <div className="p-3 border-b border-[var(--border)]">
+            <h3 className="text-lg font-semibold">Businesses in view</h3>
+          </div>
+          <div className="p-3 flex-1 min-h-0 overflow-auto">
+            {loading ? (
+              <div className="text-sm opacity-70">Loading...</div>
+            ) : businesses.length === 0 ? (
+              <div className="text-sm opacity-70">No businesses in this area.</div>
+            ) : (
+              <ul className="space-y-2">
+                {businesses.slice(0, 100).map((b) => (
+                  <li
+                    key={b.id}
+                    className="p-2 rounded-lg hover:bg-[#101113] cursor-pointer"
+                    onClick={() => handleBusinessFocus(b)}
+                  >
+                    <div className="font-medium">{b.name}</div>
+                    <div className="text-xs opacity-80">{b.location}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </aside>
     </div>
@@ -653,6 +519,16 @@ function LeafletClusterLayer({ items }) {
   const map = useMap();
   const [clusters, setClusters] = useState([]);
   const indexRef = useRef(null);
+  const businessIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: 'leaflet-lucide-marker',
+        html: `<div style="color:#2563eb;display:flex;align-items:center;justify-content:center;width:32px;height:32px;transform:translateY(-4px);">${LUCIDE_PIN_HTML}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 28],
+      }),
+    [],
+  );
 
   useEffect(() => {
     const points = (items || [])
@@ -696,11 +572,14 @@ function LeafletClusterLayer({ items }) {
     if (clusterFeature.properties.cluster) {
       const count = clusterFeature.properties.point_count;
       const clusterId = clusterFeature.properties.cluster_id;
-      const size = 30 + Math.min(30, count);
       const icon = L.divIcon({
-        html: `<div style="background:#3b5f7c;color:#fff;border-radius:9999px;display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border:2px solid rgba(255,255,255,.85);font-weight:600;">${count}</div>`,
+        html: `
+          <div style="position:relative;display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;background:#1f2937;border:2px solid rgba(255,255,255,0.9);box-shadow:0 4px 10px rgba(0,0,0,0.35);">
+            ${LUCIDE_PIN_HTML}
+            <span style="position:absolute;bottom:4px;right:4px;background:#2563eb;color:#fff;border-radius:9999px;padding:2px 6px;font-size:11px;font-weight:700;line-height:1;">${count}</span>
+          </div>`,
         className: 'cluster-marker',
-        iconSize: [size, size],
+        iconSize: [46, 46],
       });
       return (
         <Marker
@@ -723,7 +602,7 @@ function LeafletClusterLayer({ items }) {
     if (!biz) return null;
 
     return (
-      <Marker key={businessId} position={[lat, lng]}>
+      <Marker key={businessId} position={[lat, lng]} icon={businessIcon}>
         <Popup>
           <div dangerouslySetInnerHTML={{ __html: createPopupHtml(biz) }} />
         </Popup>
