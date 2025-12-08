@@ -15,6 +15,7 @@ import {
   Disc2,
   ZoomIn,
   Circle,
+  X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
@@ -291,6 +292,7 @@ export default function Home() {
   const [locationPanelRect, setLocationPanelRect] = useState(null);
   const [filtersPanelRect, setFiltersPanelRect] = useState(null);
   const [focusedBusinessId, setFocusedBusinessId] = useState(null);
+  const [activeBiz, setActiveBiz] = useState(null);
   const mapStyle = MAPBOX_DEFAULT_STYLE;
 
   const {
@@ -396,12 +398,21 @@ export default function Home() {
     const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
     if (!visible) return null;
     const rect = visible.getBoundingClientRect();
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 9999;
+    const margin = 12;
+    const maxWidth = vw - margin * 2;
+    const width = Math.min(Math.max(rect.width, 220), maxWidth);
+    let left = rect.left;
+    if (left + width > vw - margin) {
+      left = vw - margin - width;
+    }
+    left = Math.max(margin, left);
     const scrollY = typeof window !== 'undefined' ? window.scrollY || 0 : 0;
     const scrollX = typeof window !== 'undefined' ? window.scrollX || 0 : 0;
     return {
       top: rect.bottom + 8 + scrollY,
-      left: rect.left + scrollX,
-      width: rect.width,
+      left: left + scrollX,
+      width,
     };
   }, []);
 
@@ -552,6 +563,13 @@ export default function Home() {
     [filtered, focusedBusinessId],
   );
 
+  // If the popup is closed, also clear the focused business so it doesn't immediately reopen.
+  useEffect(() => {
+    if (!activeBiz) {
+      setFocusedBusinessId(null);
+    }
+  }, [activeBiz]);
+
   useEffect(() => {
     if (focusedBusinessId == null) return;
     if (!filtered.some((b) => b.id === focusedBusinessId)) {
@@ -657,13 +675,19 @@ export default function Home() {
   );
 
   const canUsePortal = typeof document !== 'undefined';
+  const activeBizInfo = activeBiz ? buildPopupData(activeBiz, center || WILMINGTON_CENTER) : null;
 
   const locationRect = locationPanelRect || getVisibleLocationRect();
   const locationDropdown = canUsePortal && locationOpen && locationRect
     ? createPortal(
         <div
-          className="dropdown-panel dropdown-panel--overlay"
-          style={{ top: locationRect.top, left: locationRect.left, width: locationRect.width }}
+          className="dropdown-panel dropdown-panel--overlay dropdown-panel--location"
+          style={{
+            top: locationRect.top,
+            left: locationRect.left,
+            width: locationRect.width,
+            '--location-panel-top': `${locationRect.top}px`,
+          }}
           onMouseDown={(e) => {
             locationDropdownPressRef.current = true;
             e.stopPropagation();
@@ -863,17 +887,19 @@ export default function Home() {
                 ref={mapSectionRef}
                 className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-none h-full"
               >
-        <ResultsMap
-          center={center}
-          items={filtered}
-          focusBusiness={focusBusiness}
-          mapStyle={mapStyle}
-          onCloseup={handleCloseupRequest}
-          setCenter={setCenter}
-          setCenterLabel={setCenterLabel}
-          radiusMi={radiusMi}
-        />
-      </div>
+                <ResultsMap
+                  center={center}
+                  items={filtered}
+                  focusBusiness={focusBusiness}
+                  mapStyle={mapStyle}
+                  onCloseup={handleCloseupRequest}
+                  setCenter={setCenter}
+                  setCenterLabel={setCenterLabel}
+                  radiusMi={radiusMi}
+                  activeBiz={activeBiz}
+                  setActiveBiz={setActiveBiz}
+                />
+              </div>
 
               <div className="home-search-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6 order-2 lg:order-none lg:hidden">
                 <div className="flex flex-wrap items-center gap-4">
@@ -1091,6 +1117,65 @@ export default function Home() {
 
             {mobilePeekList}
 
+      {activeBizInfo && (
+        <div className="map-biz-sheet map-biz-sheet--mobile lg:hidden">
+          <button
+            type="button"
+            className="map-biz-sheet__handle"
+            onClick={() => setActiveBiz(null)}
+            aria-label="Close details"
+          />
+          <div className="map-biz-sheet__header">
+            <div>
+              <div className="map-biz-sheet__title">{activeBizInfo.name}</div>
+              {activeBizInfo.address && (
+                <div className="map-biz-sheet__subtitle">
+                  <MapPin size={14} className="text-white/50" />
+                  <span>{activeBizInfo.address}</span>
+                </div>
+              )}
+            </div>
+            {activeBizInfo.distanceLabel && (
+              <span className="chip chip--pill">{activeBizInfo.distanceLabel}</span>
+            )}
+          </div>
+            <div className="map-biz-sheet__meta">
+              <div className="map-biz-sheet__image" aria-hidden="true">
+                <span>Photo</span>
+              </div>
+              <div className="map-biz-sheet__summary">
+              {activeBizInfo.description && (
+                <p className="map-biz-sheet__desc">{activeBizInfo.description}</p>
+              )}
+              <div className="map-biz-sheet__tags">
+                <span className="chip">Reviews</span>
+                <span className="chip">Hours</span>
+                <span className="chip">Amenities</span>
+              </div>
+            </div>
+          </div>
+          <div className="map-biz-sheet__actions">
+            {activeBizInfo.callHref && (
+              <a className="btn btn-ghost" href={activeBizInfo.callHref}>
+                <Phone size={16} />
+                Call
+              </a>
+            )}
+            {activeBizInfo.directionsHref && (
+              <a className="btn btn-primary" href={activeBizInfo.directionsHref} target="_blank" rel="noreferrer">
+                <ExternalLink size={16} />
+                Directions
+              </a>
+            )}
+            {activeBiz?.id != null && (
+              <Link className="btn btn-ghost" to={`/business/${activeBiz.id}`}>
+                Details
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
             <div className="rounded-3xl border border-[var(--border)] bg-gradient-to-r from-[var(--bg-panel)]/95 via-[var(--bg-alt)] to-[var(--bg-panel)]/95 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl">
               <div className="text-center md:text-left">
                 <h3 className="text-xl font-semibold text-white">
@@ -1129,6 +1214,8 @@ function ResultsMap({
   setCenter,
   setCenterLabel,
   radiusMi,
+  activeBiz,
+  setActiveBiz,
 }) {
   const [mapboxFailed, setMapboxFailed] = useState(!MAPBOX_ENABLED);
   const [mapReady, setMapReady] = useState(false);
@@ -1139,10 +1226,10 @@ function ResultsMap({
   const markersRef = useRef(new Map());
   const clusterMarkersRef = useRef([]);
   const youMarkerRef = useRef(null);
-  const activePopupRef = useRef(null);
   const centerRef = useRef(center);
   const lastStyleRef = useRef(mapStyle);
   const pendingCloseupRef = useRef(false);
+  const suppressCloseRef = useRef(false);
 
   useEffect(() => { centerRef.current = center; }, [center]);
 
@@ -1182,24 +1269,12 @@ function ResultsMap({
     const coords = toLngLatTuple(focusBusiness);
     if (!coords) return;
     const [lng, lat] = coords;
-    const { id } = focusBusiness;
     const map = mapRef.current;
     const closeupRequested = pendingCloseupRef.current;
     const targetZoom = closeupRequested
       ? Math.min(19, Math.max(map.getZoom(), 18))
       : Math.max(map.getZoom(), 16);
-
-    const showPopup = (markerInstance) => {
-      if (!markerInstance || typeof markerInstance.getPopup !== 'function') return;
-      const popup = markerInstance.getPopup();
-      if (!popup) return;
-      popup.setLngLat([lng, lat]);
-      if (typeof popup.isOpen === 'function') {
-        if (!popup.isOpen()) markerInstance.togglePopup();
-      } else {
-        markerInstance.togglePopup();
-      }
-    };
+    suppressCloseRef.current = true;
 
     map.flyTo({
       center: [lng, lat],
@@ -1210,57 +1285,11 @@ function ResultsMap({
 
     map.once('moveend', () => {
       pendingCloseupRef.current = false;
-      if (id == null) return;
-      if (activePopupRef.current) {
-        if (typeof activePopupRef.current.__unmount === 'function') {
-          activePopupRef.current.__unmount();
-          activePopupRef.current.__unmount = null;
-        }
-        activePopupRef.current.remove();
-        activePopupRef.current = null;
-      }
-      const refreshed = markersRef.current.get(id);
-      if (refreshed) {
-        showPopup(refreshed);
-      } else {
-        const info = buildPopupData(focusBusiness, centerRef.current || center);
-        const { element, unmount } = createPopupElement(info, () => {
-          pendingCloseupRef.current = true;
-          onCloseup?.(focusBusiness);
-        });
-        const popup = new mapboxgl.Popup({ offset: 12, closeButton: false }).setLngLat([lng, lat]).addTo(map);
-        if (element) {
-          popup.setDOMContent(element);
-        }
-        popup.__unmount = unmount;
-        popup.on('close', () => {
-          if (typeof popup.__unmount === 'function') {
-            popup.__unmount();
-            popup.__unmount = null;
-          }
-        });
-        activePopupRef.current = popup;
-      }
+      suppressCloseRef.current = false;
+      setActiveBiz(focusBusiness);
     });
 
-    if (id != null) {
-      const marker = markersRef.current.get(id);
-      if (marker) {
-        if (
-          activePopupRef.current &&
-          activePopupRef.current !== (typeof marker.getPopup === 'function' ? marker.getPopup() : null)
-        ) {
-          if (typeof activePopupRef.current.__unmount === 'function') {
-            activePopupRef.current.__unmount();
-            activePopupRef.current.__unmount = null;
-          }
-          activePopupRef.current.remove();
-          activePopupRef.current = null;
-        }
-        showPopup(marker);
-      }
-    }
-  }, [focusBusiness, mapboxFailed, center, mapStyle, onCloseup]);
+  }, [focusBusiness, mapboxFailed, setActiveBiz]);
 
   const updateMapboxMarkerAppearance = useCallback(() => {
     const map = mapRef.current;
@@ -1294,13 +1323,6 @@ function ResultsMap({
   const rebuildMarkers = useCallback(() => {
     if (mapboxFailed || !mapRef.current) return;
     markersRef.current.forEach((marker) => {
-      if (typeof marker.getPopup === 'function') {
-        const popup = marker.getPopup();
-        if (popup && typeof popup.__unmount === 'function') {
-          popup.__unmount();
-          popup.__unmount = null;
-        }
-      }
       cleanupMarkerElement(marker);
       marker.remove();
     });
@@ -1310,14 +1332,7 @@ function ResultsMap({
       marker.remove();
     });
     clusterMarkersRef.current = [];
-    if (activePopupRef.current) {
-      if (typeof activePopupRef.current.__unmount === 'function') {
-        activePopupRef.current.__unmount();
-        activePopupRef.current.__unmount = null;
-      }
-      activePopupRef.current.remove();
-      activePopupRef.current = null;
-    }
+    setActiveBiz(null);
 
     const map = mapRef.current;
     const zoom = map.getZoom();
@@ -1334,28 +1349,11 @@ function ResultsMap({
       const marker = new mapboxgl.Marker({ element, anchor: 'bottom' });
 
       marker.setLngLat([biz.lng, biz.lat]);
-
-      const popup = new mapboxgl.Popup({ offset: 12, closeButton: false });
-      popup.on('open', () => {
-        const info = buildPopupData(biz, centerRef.current || center);
-        const { element, unmount } = createPopupElement(info, () => {
-          pendingCloseupRef.current = true;
-          onCloseup?.(biz);
-        });
-        if (element) {
-          popup.setDOMContent(element);
-        }
-        popup.__unmount = unmount;
-        activePopupRef.current = popup;
-      });
-      popup.on('close', () => {
-        if (typeof popup.__unmount === 'function') {
-          popup.__unmount();
-          popup.__unmount = null;
-        }
-      });
-      marker.setPopup(popup);
       marker.addTo(map);
+      element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setActiveBiz(biz);
+      });
       if (biz?.id != null) {
         markersRef.current.set(biz.id, marker);
       }
@@ -1475,25 +1473,10 @@ function ResultsMap({
     const markersMap = markersRef.current;
     return () => {
       markersMap.forEach((marker) => {
-        if (typeof marker.getPopup === 'function') {
-          const popup = marker.getPopup();
-          if (popup && typeof popup.__unmount === 'function') {
-            popup.__unmount();
-            popup.__unmount = null;
-          }
-        }
         cleanupMarkerElement(marker);
         marker.remove();
       });
       markersMap.clear();
-      if (activePopupRef.current) {
-        if (typeof activePopupRef.current.__unmount === 'function') {
-          activePopupRef.current.__unmount();
-          activePopupRef.current.__unmount = null;
-        }
-        activePopupRef.current.remove();
-        activePopupRef.current = null;
-      }
       removeYouMarker();
       mapRef.current?.remove();
       mapRef.current = null;
@@ -1509,24 +1492,33 @@ function ResultsMap({
 
   useEffect(() => {
     if (mapboxFailed || !mapRef.current || typeof window === 'undefined') return;
+    const map = mapRef.current;
     const handleResize = () => {
       mapRef.current?.resize();
     };
+    const handleMapClick = () => setActiveBiz(null);
+    const handleUserMove = () => {
+      if (suppressCloseRef.current) return;
+      if (activeBiz) setActiveBiz(null);
+    };
     handleResize();
+    map.on('click', handleMapClick);
+    map.on('dragstart', handleUserMove);
+    map.on('zoomstart', handleUserMove);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [mapboxFailed]);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      map.off('click', handleMapClick);
+      map.off('dragstart', handleUserMove);
+      map.off('zoomstart', handleUserMove);
+    };
+  }, [mapboxFailed, setActiveBiz, activeBiz]);
 
   useEffect(() => {
-    if (mapboxFailed && activePopupRef.current) {
-      if (typeof activePopupRef.current.__unmount === 'function') {
-        activePopupRef.current.__unmount();
-        activePopupRef.current.__unmount = null;
-      }
-      activePopupRef.current.remove();
-      activePopupRef.current = null;
+    if (mapboxFailed) {
+      setActiveBiz(null);
     }
-  }, [mapboxFailed]);
+  }, [mapboxFailed, setActiveBiz]);
 
   useEffect(() => {
     rebuildMarkers();
@@ -1577,17 +1569,6 @@ function ResultsMap({
   }, [mapStyle, mapboxFailed, rebuildMarkers, focusOnBusiness]);
 
   useEffect(() => {
-    if (!focusBusiness && activePopupRef.current) {
-      if (typeof activePopupRef.current.__unmount === 'function') {
-        activePopupRef.current.__unmount();
-        activePopupRef.current.__unmount = null;
-      }
-      activePopupRef.current.remove();
-      activePopupRef.current = null;
-    }
-  }, [focusBusiness]);
-
-  useEffect(() => {
     if (!focusBusiness) {
       pendingCloseupRef.current = false;
     }
@@ -1600,6 +1581,8 @@ function ResultsMap({
       </div>
     );
   }
+
+  const activeInfo = activeBiz ? buildPopupData(activeBiz, centerRef.current || center) : null;
 
   return (
     <div className="absolute inset-0">
@@ -1627,6 +1610,76 @@ function ResultsMap({
           Reset view
         </button>
       </div>
+      {activeInfo && (
+        <div className="map-biz-overlay map-biz-overlay--desktop hidden lg:flex">
+          <div className="map-biz-sheet map-biz-sheet--desktop">
+            <div className="map-biz-sheet__top">
+              <button
+                type="button"
+                className="map-biz-sheet__handle"
+                onClick={() => setActiveBiz(null)}
+                aria-label="Close details"
+              />
+              <button
+                type="button"
+                className="map-biz-sheet__close"
+                onClick={() => setActiveBiz(null)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="map-biz-sheet__header">
+              <div>
+                <div className="map-biz-sheet__title">{activeInfo.name}</div>
+                {activeInfo.address && (
+                  <div className="map-biz-sheet__subtitle">
+                    <MapPin size={14} className="text-white/50" />
+                    <span>{activeInfo.address}</span>
+                  </div>
+                )}
+              </div>
+              {activeInfo.distanceLabel && (
+                <span className="chip chip--pill">{activeInfo.distanceLabel}</span>
+              )}
+            </div>
+            <div className="map-biz-sheet__meta">
+              <div className="map-biz-sheet__image" aria-hidden="true">
+                <span>Photo</span>
+              </div>
+              <div className="map-biz-sheet__summary">
+                {activeInfo.description && (
+                  <p className="map-biz-sheet__desc">{activeInfo.description}</p>
+                )}
+                <div className="map-biz-sheet__tags">
+                  <span className="chip">Reviews</span>
+                  <span className="chip">Hours</span>
+                  <span className="chip">Amenities</span>
+                </div>
+              </div>
+            </div>
+            <div className="map-biz-sheet__actions">
+              {activeInfo.callHref && (
+                <a className="btn btn-ghost" href={activeInfo.callHref}>
+                  <Phone size={16} />
+                  Call
+                </a>
+              )}
+              {activeInfo.directionsHref && (
+                <a className="btn btn-primary" href={activeInfo.directionsHref} target="_blank" rel="noreferrer">
+                  <ExternalLink size={16} />
+                  Directions
+                </a>
+              )}
+              {activeBiz?.id != null && (
+                <Link className="btn btn-ghost" to={`/business/${activeBiz.id}`}>
+                  Details
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
