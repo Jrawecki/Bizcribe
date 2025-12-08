@@ -122,7 +122,7 @@ export function useAddressSearch() {
       if (!keepLocked && lockedRef.current) {
         lockedRef.current = false;
       }
-      if (!value || value.trim().length < 3) {
+      if (!value || value.trim().length < 2) {
         setOpen(false);
         setList([]);
       }
@@ -134,14 +134,14 @@ export function useAddressSearch() {
     () =>
       debounce(async (value) => {
         const trimmed = value ? value.trim() : '';
-        if (!trimmed || trimmed.length < 3 || lockedRef.current) {
+        if (!trimmed || trimmed.length < 2 || lockedRef.current) {
           setList([]);
           setOpen(false);
           return;
         }
         if (/^[\d\s-]+$/.test(trimmed)) {
           const digitsOnly = trimmed.replace(/[^\d]/g, '');
-          if (digitsOnly.length < 5) {
+          if (digitsOnly.length < 1) {
             setList([]);
             setOpen(false);
             return;

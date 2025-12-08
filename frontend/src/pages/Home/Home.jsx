@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Disc2,
   ZoomIn,
+  Circle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
@@ -46,9 +47,9 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const HOME_MIN_ZOOM = 7;
 const MARKER_HIDE_ZOOM = 8;
 const markerScaleForZoom = (zoom = DEFAULT_ZOOM) =>
-  clamp(0.6 + ((zoom - MARKER_HIDE_ZOOM) * 0.1), 0.6, 1.15);
+  clamp(0.48 + ((zoom - MARKER_HIDE_ZOOM) * 0.08), 0.48, 0.92);
 
-const createMarkerElement = (title = 'Location pin', variant = 'business') => {
+const createMarkerElement = (title = 'Location pin', variant = 'business', countLabel = '') => {
   if (typeof document === 'undefined') return null;
   const el = document.createElement(variant === 'business' ? 'button' : 'div');
   if (variant === 'business') {
@@ -62,8 +63,24 @@ const createMarkerElement = (title = 'Location pin', variant = 'business') => {
   el.style.setProperty('--marker-scale', '1');
   el.style.pointerEvents = variant === 'business' ? 'auto' : 'none';
   const root = createRoot(el);
-  const Icon = variant === 'you' ? MapPinHouse : MapPin;
-  root.render(<Icon className="map-marker-icon__svg" size={28} strokeWidth={2.2} />);
+  if (variant === 'cluster') {
+    root.render(
+      <div className="map-marker-cluster__inner">
+        <Circle className="map-marker-cluster__svg" size={28} strokeWidth={1.8} fill="none" />
+        <span className="map-marker-cluster__count">{countLabel}</span>
+      </div>,
+    );
+  } else {
+    const Icon = variant === 'you' ? MapPinHouse : MapPin;
+    const size = variant === 'you' ? 30 : 28;
+    root.render(
+      <Icon
+        className={`map-marker-icon__svg ${variant === 'you' ? 'map-marker-icon__svg--you' : ''}`}
+        size={size}
+        strokeWidth={variant === 'you' ? 2.3 : 2.1}
+      />,
+    );
+  }
   el.__markerRoot = root;
   el.__markerVariant = variant;
   return el;
@@ -294,6 +311,7 @@ export default function Home() {
   const mapSectionRef = useRef(null);
   const locationDropdownPressRef = useRef(false);
   const currentLocationRequestRef = useRef(false);
+  const prevLocationValueRef = useRef('');
 
   const locationSuggestions = (addrList || []).slice(0, 10);
 
@@ -311,13 +329,14 @@ export default function Home() {
         (pos) => {
           centerLockedRef.current = true;
           setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setCenterLabel('your location');
+          setCenterLabel('Current location');
           setLocationOpen(false);
           setAddrOpen(false);
           setAddrQuery('Current location', { keepLocked: true });
           currentLocationRequestRef.current = false;
         },
         () => {
+          centerLockedRef.current = false;
           setAddrQuery(previousQuery || '', { keepLocked: true });
           unlockAddressInput();
           currentLocationRequestRef.current = false;
@@ -346,7 +365,7 @@ export default function Home() {
                 if (cancelled) return;
                 if (!centerLockedRef.current) {
                   setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                  setCenterLabel('your location');
+                  setCenterLabel('Current location');
                   setAddrQuery('Current location', { keepLocked: true });
                 }
               },
@@ -372,17 +391,24 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handler);
   }, [setAddrOpen]);
 
-  const updateLocationPanelRect = useCallback(() => {
+  const getVisibleLocationRect = useCallback(() => {
     const anchors = [locationRefDesktop.current, locationRefMobile.current].filter(Boolean);
     const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
-    if (!visible) return;
+    if (!visible) return null;
     const rect = visible.getBoundingClientRect();
-    setLocationPanelRect({
-      top: rect.bottom + 8,
-      left: rect.left,
+    const scrollY = typeof window !== 'undefined' ? window.scrollY || 0 : 0;
+    const scrollX = typeof window !== 'undefined' ? window.scrollX || 0 : 0;
+    return {
+      top: rect.bottom + 8 + scrollY,
+      left: rect.left + scrollX,
       width: rect.width,
-    });
+    };
   }, []);
+
+  const updateLocationPanelRect = useCallback(() => {
+    const rect = getVisibleLocationRect();
+    if (rect) setLocationPanelRect(rect);
+  }, [getVisibleLocationRect]);
 
   const updateFiltersPanelRect = useCallback(() => {
     const anchors = [filtersRefDesktop.current, filtersRefMobile.current].filter(Boolean);
@@ -404,6 +430,15 @@ export default function Home() {
       width,
     });
   }, []);
+
+  const handleLocationFocus = useCallback(() => {
+    prevLocationValueRef.current = addrQuery || centerLabel || '';
+    setLocationOpen(true);
+    unlockAddressInput();
+    setAddrQuery('');
+    setAddrOpen(true);
+    setTimeout(updateLocationPanelRect, 0);
+  }, [addrQuery, centerLabel, setAddrOpen, setAddrQuery, unlockAddressInput, updateLocationPanelRect]);
 
   useEffect(() => {
     if (!locationOpen || typeof window === 'undefined') return undefined;
@@ -623,11 +658,12 @@ export default function Home() {
 
   const canUsePortal = typeof document !== 'undefined';
 
-  const locationDropdown = canUsePortal && locationOpen && locationPanelRect
+  const locationRect = locationPanelRect || getVisibleLocationRect();
+  const locationDropdown = canUsePortal && locationOpen && locationRect
     ? createPortal(
         <div
           className="dropdown-panel dropdown-panel--overlay"
-          style={{ top: locationPanelRect.top, left: locationPanelRect.left, width: locationPanelRect.width }}
+          style={{ top: locationRect.top, left: locationRect.left, width: locationRect.width }}
           onMouseDown={(e) => {
             locationDropdownPressRef.current = true;
             e.stopPropagation();
@@ -729,14 +765,13 @@ export default function Home() {
                     <input
                       type="text"
                       value={addrQuery}
+                      autoComplete="street-address"
+                      autoCorrect="off"
+                      spellCheck="false"
+                      inputMode="text"
+                      enterKeyHint="search"
                       onFocus={() => {
-                        setLocationOpen(true);
-                        unlockAddressInput();
-                        if (addrQuery) {
-                          setAddrQuery('');
-                        }
-                        setAddrOpen(true);
-                        setTimeout(updateLocationPanelRect, 0);
+                        handleLocationFocus();
                         const shouldAutoLocate =
                           !centerLockedRef.current && (!addrQuery || addrQuery === 'Current location');
                         if (shouldAutoLocate && !currentLocationRequestRef.current) {
@@ -754,12 +789,21 @@ export default function Home() {
                           }
                         }
                       }}
+                      onClick={() => {
+                        handleLocationFocus();
+                      }}
+                      onMouseDown={() => {
+                        handleLocationFocus();
+                      }}
+                      onMouseDown={() => {
+                        handleLocationFocus();
+                      }}
                       onChange={(e) => {
                         const value = e.target.value;
                         setAddrQuery(value);
                         unlockAddressInput();
                         setLocationOpen(true);
-                        if (value && value.trim().length >= 2) {
+                        if (value && value.trim().length >= 1) {
                           setAddrOpen(true);
                           searchAddress(value);
                         } else {
@@ -771,6 +815,10 @@ export default function Home() {
                           // allow clicks inside the dropdown without closing
                           locationDropdownPressRef.current = false;
                           return;
+                        }
+                        const trimmed = (addrQuery || '').trim();
+                        if (!trimmed && prevLocationValueRef.current) {
+                          setAddrQuery(prevLocationValueRef.current, { keepLocked: true });
                         }
                         setLocationOpen(false);
                         setAddrOpen(false);
@@ -815,14 +863,17 @@ export default function Home() {
                 ref={mapSectionRef}
                 className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-none h-full"
               >
-                <ResultsMap
-                  center={center}
-                  items={filtered}
-                  focusBusiness={focusBusiness}
-                  mapStyle={mapStyle}
-                  onCloseup={handleCloseupRequest}
-                />
-              </div>
+        <ResultsMap
+          center={center}
+          items={filtered}
+          focusBusiness={focusBusiness}
+          mapStyle={mapStyle}
+          onCloseup={handleCloseupRequest}
+          setCenter={setCenter}
+          setCenterLabel={setCenterLabel}
+          radiusMi={radiusMi}
+        />
+      </div>
 
               <div className="home-search-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6 order-2 lg:order-none lg:hidden">
                 <div className="flex flex-wrap items-center gap-4">
@@ -843,14 +894,13 @@ export default function Home() {
                       <input
                         type="text"
                         value={addrQuery}
+                        autoComplete="street-address"
+                        autoCorrect="off"
+                        spellCheck="false"
+                        inputMode="text"
+                        enterKeyHint="search"
                       onFocus={() => {
-                        setLocationOpen(true);
-                        unlockAddressInput();
-                        if (addrQuery) {
-                          setAddrQuery('');
-                        }
-                        setAddrOpen(true);
-                        setTimeout(updateLocationPanelRect, 0);
+                        handleLocationFocus();
                         const shouldAutoLocate =
                           !centerLockedRef.current && (!addrQuery || addrQuery === 'Current location');
                         if (shouldAutoLocate && !currentLocationRequestRef.current) {
@@ -868,12 +918,15 @@ export default function Home() {
                           }
                         }
                       }}
+                      onClick={() => {
+                        handleLocationFocus();
+                      }}
                       onChange={(e) => {
                         const value = e.target.value;
                         setAddrQuery(value);
                         unlockAddressInput();
                         setLocationOpen(true);
-                        if (value && value.trim().length >= 2) {
+                        if (value && value.trim().length >= 1) {
                           setAddrOpen(true);
                           searchAddress(value);
                         } else {
@@ -884,6 +937,10 @@ export default function Home() {
                         if (locationDropdownPressRef.current) {
                           locationDropdownPressRef.current = false;
                           return;
+                        }
+                        const trimmed = (addrQuery || '').trim();
+                        if (!trimmed && prevLocationValueRef.current) {
+                          setAddrQuery(prevLocationValueRef.current, { keepLocked: true });
                         }
                         setLocationOpen(false);
                         setAddrOpen(false);
@@ -1063,11 +1120,24 @@ export default function Home() {
   );
 }
 
-function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_STYLE, onCloseup }) {
+function ResultsMap({
+  center,
+  items,
+  focusBusiness,
+  mapStyle = MAPBOX_DEFAULT_STYLE,
+  onCloseup,
+  setCenter,
+  setCenterLabel,
+  radiusMi,
+}) {
   const [mapboxFailed, setMapboxFailed] = useState(!MAPBOX_ENABLED);
+  const [mapReady, setMapReady] = useState(false);
+  const [followMapCenter, setFollowMapCenter] = useState(false);
+  const [followItems, setFollowItems] = useState(null);
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef(new Map());
+  const clusterMarkersRef = useRef([]);
   const youMarkerRef = useRef(null);
   const activePopupRef = useRef(null);
   const centerRef = useRef(center);
@@ -1075,6 +1145,29 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
   const pendingCloseupRef = useRef(false);
 
   useEffect(() => { centerRef.current = center; }, [center]);
+
+  useEffect(() => {
+    if (!followMapCenter) {
+      setFollowItems(null);
+    }
+  }, [followMapCenter]);
+
+  const fetchFollowItems = useCallback(
+    async (lngLat) => {
+      if (!followMapCenter || !lngLat) return;
+      try {
+        const url = new URL('/api/businesses/', window.location.origin);
+        url.searchParams.set('near', `${lngLat.lat.toFixed(6)},${lngLat.lng.toFixed(6)}`);
+        url.searchParams.set('radius_km', String(toKm(radiusMi)));
+        url.searchParams.set('limit', '200');
+        const data = await fetchJsonWithTimeout(url.toString());
+        setFollowItems(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.warn('Follow fetch failed', err);
+      }
+    },
+    [followMapCenter, radiusMi],
+  );
 
   const removeYouMarker = useCallback(() => {
     if (youMarkerRef.current) {
@@ -1212,6 +1305,11 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       marker.remove();
     });
     markersRef.current.clear();
+    clusterMarkersRef.current.forEach((marker) => {
+      cleanupMarkerElement(marker);
+      marker.remove();
+    });
+    clusterMarkersRef.current = [];
     if (activePopupRef.current) {
       if (typeof activePopupRef.current.__unmount === 'function') {
         activePopupRef.current.__unmount();
@@ -1221,8 +1319,16 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       activePopupRef.current = null;
     }
 
-    (items || []).forEach((biz) => {
-      if (typeof biz.lng !== 'number' || typeof biz.lat !== 'number') return;
+    const map = mapRef.current;
+    const zoom = map.getZoom();
+    const sourceItems = followMapCenter && Array.isArray(followItems) && followItems.length
+      ? followItems
+      : items;
+    const clusteringEnabled = zoom < 16;
+    const thresholdPx = clusteringEnabled
+      ? clamp(44 - ((zoom - 10) * 6), 14, 44)
+      : 0;
+    const addBusinessMarker = (biz) => {
       const element = createMarkerElement(biz.name || 'Business location', 'business');
       if (!element) return;
       const marker = new mapboxgl.Marker({ element, anchor: 'bottom' });
@@ -1249,27 +1355,83 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
         }
       });
       marker.setPopup(popup);
-      marker.addTo(mapRef.current);
+      marker.addTo(map);
       if (biz?.id != null) {
         markersRef.current.set(biz.id, marker);
       }
-    });
+    };
+
+    if (!clusteringEnabled) {
+      (sourceItems || []).forEach((biz) => {
+        if (typeof biz.lng !== 'number' || typeof biz.lat !== 'number') return;
+        if (biz.__youMarker) return;
+        addBusinessMarker(biz);
+      });
+    } else {
+      const clusters = [];
+      const projected = [];
+
+      (sourceItems || []).forEach((biz) => {
+        if (typeof biz.lng !== 'number' || typeof biz.lat !== 'number') return;
+        if (biz.__youMarker) return;
+        const point = map.project([biz.lng, biz.lat]);
+        projected.push({ biz, point });
+      });
+
+      projected.forEach(({ biz, point }) => {
+        let target = null;
+        for (const c of clusters) {
+          const dx = c.point.x - point.x;
+          const dy = c.point.y - point.y;
+          if (Math.hypot(dx, dy) <= thresholdPx) {
+            target = c;
+            break;
+          }
+        }
+        if (target) {
+          target.items.push(biz);
+          target.point = {
+            x: (target.point.x * (target.items.length - 1) + point.x) / target.items.length,
+            y: (target.point.y * (target.items.length - 1) + point.y) / target.items.length,
+          };
+        } else {
+          clusters.push({ items: [biz], point });
+        }
+      });
+
+      clusters.forEach((cluster) => {
+        const [lng, lat] = map.unproject(cluster.point).toArray();
+        if (cluster.items.length > 1) {
+          const element = createMarkerElement(`${cluster.items.length} businesses`, 'cluster', String(cluster.items.length));
+          if (!element) return;
+          const marker = new mapboxgl.Marker({ element, anchor: 'bottom' });
+          marker.setLngLat([lng, lat]).addTo(map);
+          clusterMarkersRef.current.push(marker);
+          element.onclick = (e) => {
+            e.stopPropagation();
+            const targetZoom = Math.min(map.getZoom() + 2.5, 18);
+            map.easeTo({ center: [lng, lat], zoom: targetZoom, duration: 400, essential: true });
+          };
+        } else {
+          addBusinessMarker(cluster.items[0]);
+        }
+      });
+    }
 
     updateMapboxMarkerAppearance();
     focusOnBusiness();
-  }, [items, mapboxFailed, center, focusOnBusiness, onCloseup, updateMapboxMarkerAppearance]);
+  }, [items, followItems, followMapCenter, mapboxFailed, center, focusOnBusiness, onCloseup, updateMapboxMarkerAppearance]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || mapboxFailed) {
+    if (mapboxFailed) {
       removeYouMarker();
       return;
     }
-    const coords = toLngLatTuple(center);
-    if (!coords) {
-      removeYouMarker();
+    if (!map || !mapReady) {
       return;
     }
+    const coords = toLngLatTuple(center) || [WILMINGTON_CENTER.lng, WILMINGTON_CENTER.lat];
     if (!youMarkerRef.current) {
       const element = createMarkerElement('Your location', 'you');
       if (!element) return;
@@ -1280,7 +1442,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       youMarkerRef.current.setLngLat(coords);
     }
     updateMapboxMarkerAppearance();
-  }, [center, mapboxFailed, removeYouMarker, updateMapboxMarkerAppearance]);
+  }, [center, mapboxFailed, mapReady, removeYouMarker, updateMapboxMarkerAppearance]);
 
   useEffect(() => {
     if (mapRef.current || mapboxFailed) return;
@@ -1300,6 +1462,7 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
       map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
       map.on('load', () => {
         map.resize();
+        setMapReady(true);
       });
       map.on('error', () => {
         setMapboxFailed(true);
@@ -1373,10 +1536,28 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
     if (mapboxFailed || !mapRef.current) return;
     const map = mapRef.current;
     const handleZoom = () => updateMapboxMarkerAppearance();
+    const handleZoomEnd = () => rebuildMarkers();
     map.on('zoom', handleZoom);
+    map.on('zoomend', handleZoomEnd);
     handleZoom();
-    return () => map.off('zoom', handleZoom);
-  }, [mapboxFailed, updateMapboxMarkerAppearance]);
+    return () => {
+      map.off('zoom', handleZoom);
+      map.off('zoomend', handleZoomEnd);
+    };
+  }, [mapboxFailed, updateMapboxMarkerAppearance, rebuildMarkers]);
+
+  useEffect(() => {
+    if (mapboxFailed || !mapRef.current) return;
+    const map = mapRef.current;
+    const handleMoveEnd = () => {
+      if (!followMapCenter) return;
+      const c = map.getCenter();
+      centerRef.current = { lat: c.lat, lng: c.lng };
+      fetchFollowItems({ lat: c.lat, lng: c.lng });
+    };
+    map.on('moveend', handleMoveEnd);
+    return () => map.off('moveend', handleMoveEnd);
+  }, [followMapCenter, mapboxFailed, fetchFollowItems]);
 
   useEffect(() => {
     focusOnBusiness();
@@ -1423,6 +1604,29 @@ function ResultsMap({ center, items, focusBusiness, mapStyle = MAPBOX_DEFAULT_ST
   return (
     <div className="absolute inset-0">
       <div ref={containerRef} className="w-full h-full" />
+      <div className="map-overlay map-overlay--right">
+        <button
+          type="button"
+          className={`map-overlay__btn ${followMapCenter ? 'is-active' : ''}`}
+          onClick={() => setFollowMapCenter((v) => !v)}
+        >
+          <Disc2 size={14} />
+          {followMapCenter ? 'Follow: on' : 'Follow: off'}
+        </button>
+        <button
+          type="button"
+          className="map-overlay__btn"
+          onClick={() => {
+            const map = mapRef.current;
+            const target = toLngLatTuple(center) || [WILMINGTON_CENTER.lng, WILMINGTON_CENTER.lat];
+            if (!map || !target) return;
+            map.flyTo({ center: target, zoom: DEFAULT_ZOOM, duration: 500, essential: true });
+          }}
+        >
+          <LocateFixed size={14} />
+          Reset view
+        </button>
+      </div>
     </div>
   );
 }
