@@ -1,0 +1,301 @@
+{
+  "formVersion": 1,
+  "title": "Small Business Vetting",
+  "description": "Tell us about your business so we can feature you to nearby customers.",
+  "sections": [
+    {
+      "id": "basics",
+      "title": "Business basics",
+      "fields": [
+        {
+          "id": "business_structure",
+          "label": "What is your company's business structure?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Sole Proprietorship",
+            "Partnership",
+            "Limited liability company",
+            "C Corporation",
+            "S Corporation",
+            "Nonprofit"
+          ]
+        },
+        {
+          "id": "employee_count",
+          "label": "How many employees do you have?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "1-10",
+            "10-25",
+            "25-50",
+            "50+"
+          ]
+        },
+        {
+          "id": "years_operating",
+          "label": "How long has your company been operating?",
+          "type": "text",
+          "placeholder": "e.g., 3 years",
+          "required": true,
+          "maxLength": 64
+        }
+      ]
+    },
+    {
+      "id": "industry",
+      "title": "Industry",
+      "helper": "Select all that apply.",
+      "fields": [
+        {
+          "id": "industries",
+          "label": "Select what industry or industries your company falls into.",
+          "type": "multiselect",
+          "required": true,
+          "allowOther": true,
+          "groups": [
+            {
+              "label": "Retail & E-Commerce",
+              "options": [
+                "Online Store",
+                "Brick and Mortar Retail",
+                "Convenience Store",
+                "Clothing Boutique",
+                "Specialty Retail",
+                "Grocery / Market",
+                "Vape or Smoke Shop",
+                "Pet Supply Store",
+                "Thrift / Consignment Shop"
+              ]
+            },
+            {
+              "label": "Food & Beverage",
+              "options": [
+                "Restaurant",
+                "Cafe / Coffee Shop",
+                "Food Truck",
+                "Bar / Pub",
+                "Bakery",
+                "Catering Company",
+                "Meal Prep Business"
+              ]
+            },
+            {
+              "label": "Professional Services",
+              "options": [
+                "Accounting / Bookkeeping",
+                "Tax Preparation",
+                "Legal Services",
+                "Business Consulting",
+                "IT Consulting",
+                "Marketing Agency",
+                "Graphic / Web Design",
+                "Real Estate Agency",
+                "Insurance Agency",
+                "Financial Planner"
+              ]
+            },
+            {
+              "label": "Trades & Contracting",
+              "options": [
+                "General Contractor",
+                "Electrician",
+                "Plumber",
+                "HVAC Technician",
+                "Roofing Company",
+                "Landscaping / Lawn Care",
+                "Handyman Services",
+                "Painting Contractor",
+                "Residential / Commercial Cleaning"
+              ]
+            },
+            {
+              "label": "Health, Wellness & Personal Care",
+              "options": [
+                "Gym / Fitness Studio",
+                "Yoga / Pilates Studio",
+                "Personal Trainer",
+                "Massage Therapy",
+                "Hair Salon",
+                "Barbershop",
+                "Nail Salon",
+                "Med Spa",
+                "Chiropractic Office",
+                "Dental Practice",
+                "Mental Health Practice"
+              ]
+            },
+            {
+              "label": "Transportation & Logistics",
+              "options": [
+                "Courier / Delivery Service",
+                "Freight Broker",
+                "Small Trucking Operation",
+                "Moving Company",
+                "Taxi / Ride Service",
+                "Auto Repair Shop",
+                "Auto Detailing"
+              ]
+            },
+            {
+              "label": "Hospitality & Tourism",
+              "options": [
+                "Hotel / Motel",
+                "Bed & Breakfast",
+                "Airbnb Property Management",
+                "Event Planning",
+                "Travel Agency",
+                "Tour Guide Service"
+              ]
+            },
+            {
+              "label": "Manufacturing & Production",
+              "options": [
+                "Small-Scale Manufacturing",
+                "Food Production",
+                "Cosmetics / Skincare Production",
+                "Printing / Packaging",
+                "Custom Fabrication"
+              ]
+            },
+            {
+              "label": "Technology & Digital",
+              "options": [
+                "Software Development",
+                "IT Support / Managed Services",
+                "SaaS Company",
+                "Digital Content Agency",
+                "Cybersecurity Services",
+                "Tech Repair Shop"
+              ]
+            },
+            {
+              "label": "Education & Child Services",
+              "options": [
+                "Tutoring",
+                "Test Prep",
+                "Daycare",
+                "Learning Center",
+                "After School Program",
+                "Skills Training / Courses"
+              ]
+            },
+            {
+              "label": "Real Estate & Property",
+              "options": [
+                "Rental Property Business",
+                "Property Management",
+                "Real Estate Investor",
+                "Short Term Rental Operator",
+                "Home Inspection Service"
+              ]
+            },
+            {
+              "label": "Creative, Media & Entertainment",
+              "options": [
+                "Photography",
+                "Videography",
+                "Music Instruction",
+                "Art Studio",
+                "Media Production Company",
+                "Content Creator / Influencer"
+              ]
+            },
+            {
+              "label": "Agriculture & Environmental",
+              "options": [
+                "Small Farm",
+                "Nursery / Garden Center",
+                "Landscaping Supply",
+                "Environmental Consulting",
+                "Tree Care Service"
+              ]
+            },
+            {
+              "label": "Wholesale & Distribution",
+              "options": [
+                "Wholesale Distributor",
+                "B2B Supplier",
+                "Liquidation / Overstock Reseller"
+              ]
+            },
+            {
+              "label": "Nonprofit & Community",
+              "options": [
+                "Nonprofit Organization",
+                "Social Enterprise",
+                "Community Center",
+                "Charitable Services"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "finances",
+      "title": "Financial snapshot",
+      "fields": [
+        {
+          "id": "annual_revenue",
+          "label": "What is your average annual revenue?",
+          "type": "select",
+          "required": true,
+          "options": [
+            "$50,000 and Below",
+            "$50,000 \u00e2\u20ac\u201c $100,000",
+            "$100,000 - $250,000",
+            "$250,000 - $500,000",
+            "$500,000 - $750,000",
+            "$750,000 - $1,000,000",
+            "$1,000,000 and Above"
+          ]
+        },
+        {
+          "id": "tin",
+          "label": "Taxpayer Identification Number",
+          "type": "text",
+          "placeholder": "TIN (sole proprietor)",
+          "required": false,
+          "maxLength": 32
+        },
+        {
+          "id": "ein",
+          "label": "Employer Identification Number",
+          "type": "text",
+          "placeholder": "EIN (LLC or corporation)",
+          "required": false,
+          "maxLength": 32
+        }
+      ]
+    },
+    {
+      "id": "presence",
+      "title": "Presence & location",
+      "fields": [
+        {
+          "id": "website",
+          "label": "Website",
+          "type": "url",
+          "placeholder": "https://example.com",
+          "required": false
+        },
+        {
+          "id": "address",
+          "label": "Business address",
+          "type": "text",
+          "placeholder": "Street, city, state, ZIP",
+          "required": false,
+          "helper": "You can hide your address if you prefer."
+        },
+        {
+          "id": "hide_address",
+          "label": "Hide my address from public listing",
+          "type": "toggle",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

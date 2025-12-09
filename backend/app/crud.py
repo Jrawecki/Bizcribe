@@ -219,6 +219,18 @@ def create_business_submission(
         lng=payload.lng,
     )
     db.add(submission)
+    db.flush()
+
+    if payload.vetting:
+        answers = payload.vetting.answers or {}
+        vet = models.BusinessVetting(
+          submission_id=submission.id,
+          user_id=owner.id,
+          version=payload.vetting.version,
+          answers=answers,
+        )
+        db.add(vet)
+
     db.commit()
     db.refresh(submission)
     return submission
@@ -304,6 +316,9 @@ def approve_business_submission(db: Session, submission_id: int, *, reviewer: Us
         existing_business.approved_at = datetime.utcnow()
         existing_business.approved_by_id = reviewer.id
 
+        if submission.vetting and submission.vetting.business_id is None:
+            submission.vetting.business_id = existing_business.id
+
         submission.status = models.BusinessSubmission.SubmissionStatus.APPROVED.value
         submission.reviewed_at = datetime.utcnow()
         submission.reviewed_by_id = reviewer.id
@@ -328,6 +343,10 @@ def approve_business_submission(db: Session, submission_id: int, *, reviewer: Us
         lng=submission.lng,
     )
     business = create_business(db, payload, owner=owner, approved=True, approved_by=reviewer)
+
+    # Link vetting to approved business if present
+    if submission.vetting:
+        submission.vetting.business_id = business.id
 
     # Mark submission as approved and keep for audit
     submission.status = models.BusinessSubmission.SubmissionStatus.APPROVED.value

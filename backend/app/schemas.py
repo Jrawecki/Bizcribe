@@ -1,7 +1,7 @@
 # backend/app/schemas.py
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Any
 
 
 class SmallBusinessBase(BaseModel):
@@ -17,8 +17,13 @@ class SmallBusinessBase(BaseModel):
     lng: float | None = None
 
 
+class BusinessVettingPayload(BaseModel):
+    version: int
+    answers: dict[str, Any]
+
+
 class SmallBusinessCreate(SmallBusinessBase):
-    pass
+    vetting: Optional[BusinessVettingPayload] = None
 
 
 class SmallBusiness(SmallBusinessBase):
@@ -41,6 +46,7 @@ class BusinessSubmission(SmallBusinessBase):
     reviewed_at: datetime | None = None
     reviewed_by_id: int | None = None
     created_business_id: int | None = None
+    vetting: Optional["BusinessVetting"] = None
 
     class Config:
         from_attributes = True
@@ -66,3 +72,20 @@ class SubmissionPage(BaseModel):
 
 class SubmissionRejectRequest(BaseModel):
     notes: str | None = None
+
+
+class BusinessVetting(BaseModel):
+    id: int
+    submission_id: int
+    business_id: int | None = None
+    user_id: int
+    version: int
+    answers: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+BusinessSubmission.model_rebuild()

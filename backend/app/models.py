@@ -1,7 +1,7 @@
 # backend/app/models.py
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, Boolean, DateTime, JSON
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -62,3 +62,21 @@ class BusinessSubmission(Base):
     owner = relationship("User", back_populates="business_submissions", foreign_keys=[owner_id])
     reviewed_by = relationship("User", back_populates="business_submissions_reviewed", foreign_keys=[reviewed_by_id])
     created_business = relationship("Business", foreign_keys=[created_business_id])
+    vetting = relationship("BusinessVetting", back_populates="submission", uselist=False, cascade="all,delete-orphan")
+
+
+class BusinessVetting(Base):
+    __tablename__ = "business_vetting"
+
+    id = Column(Integer, primary_key=True, index=True)
+    submission_id = Column(Integer, ForeignKey("business_submissions.id"), unique=True, nullable=False)
+    business_id = Column(Integer, ForeignKey("businesses.id"), unique=True, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    version = Column(Integer, default=1, nullable=False)
+    answers = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    submission = relationship("BusinessSubmission", back_populates="vetting", foreign_keys=[submission_id])
+    business = relationship("Business", foreign_keys=[business_id])
+    user = relationship("User", foreign_keys=[user_id])
