@@ -27,13 +27,13 @@ export default function About() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-16 space-y-12">
       <header className="space-y-4">
-        <p className="text-sm uppercase tracking-[0.2em] text-white/50">About Bizscribe</p>
+        <p className="text-sm uppercase tracking-[0.2em] text-white/50">About Bizcribe</p>
         <h1 className="text-4xl font-semibold leading-tight text-[var(--ceramic,white)]">
-          Bizscribe is built to help people discover the small businesses that shape their communities.
+          Bizcribe is built to help people discover the small businesses that shape their communities.
         </h1>
         <p className="text-lg text-white/80 leading-relaxed max-w-3xl">
           Through an interactive map, you can explore local shops, services, and unique experiences around you—making it easier
-          than ever to support the businesses in your own neighborhood. For owners, Bizscribe is a simple way to increase
+          than ever to support the businesses in your own neighborhood. For owners, Bizcribe is a simple way to increase
           visibility and connect with nearby customers by sharing what makes you stand out.
         </p>
       </header>

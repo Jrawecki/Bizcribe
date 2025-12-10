@@ -89,7 +89,7 @@ function Header() {
       <div className="app-header__inner" ref={menuRef}>
         <Link to="/" className="brand-mark" onClick={closeMenu}>
           <span className="brand-mark__initial">B</span>
-          <span className="brand-mark__rest">izscribe</span>
+          <span className="brand-mark__rest">izcribe</span>
         </Link>
 
         <nav className={`header-nav${navCollapsed ? ' header-nav--hidden' : ''}`}>

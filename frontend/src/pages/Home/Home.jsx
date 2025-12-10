@@ -1266,7 +1266,7 @@ export default function Home() {
             <div className="rounded-3xl border border-[var(--border)] bg-gradient-to-r from-[var(--bg-panel)]/95 via-[var(--bg-alt)] to-[var(--bg-panel)]/95 px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl">
               <div className="text-center md:text-left">
                 <h3 className="text-xl font-semibold text-white">
-                  Own a small business? Get featured on Bizscribe.
+                  Own a small business? Get featured on Bizcribe.
                 </h3>
                 <p className="text-sm text-white/70 mt-1">
                   Share your story and help locals discover what makes your spot special.
@@ -1281,7 +1281,7 @@ export default function Home() {
 
         <footer className="border-t border-[var(--border)] py-5 mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 text-center text-sm text-white/60">
-            &copy; {new Date().getFullYear()} Bizscribe &middot; Map data &copy; OpenStreetMap contributors & Mapbox
+            &copy; {new Date().getFullYear()} Bizcribe &middot; Map data &copy; OpenStreetMap contributors & Mapbox
           </div>
         </footer>
       </main>

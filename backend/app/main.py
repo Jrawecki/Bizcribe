@@ -16,12 +16,19 @@ from .routers.auth import router as auth_router
 # Create tables (idempotent)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Bizscribe Backend")
+app = FastAPI(title="Bizcribe Backend")
 
 # CORS for Vite
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173","http://192.168.1.135:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://192.168.1.135:5173",
+        "https://bizcribe.net",
+        "https://www.bizcribe.net",
+        "https://bizcribe.pages.dev",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
