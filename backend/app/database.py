@@ -18,14 +18,20 @@ DEFAULT_SQLITE_PATH = BASE_DIR / "Bizcribe.db"
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     # SQLAlchemy requires three slashes for a relative sqlite file
-    f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}"
+    f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}",
 )
 
-# On Windows, absolute paths like C:\... should be written as sqlite:///C:/...
+# Normalize postgres scheme (Render often supplies postgres://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# Engine config: require SSL for Postgres (Render external URL) and allow sqlite check_same_thread
 if DATABASE_URL.lower().startswith("sqlite:///"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+elif DATABASE_URL.lower().startswith("postgresql://"):
+    engine = create_engine(DATABASE_URL, connect_args={"sslmode": "require"}, pool_pre_ping=True)
 else:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
