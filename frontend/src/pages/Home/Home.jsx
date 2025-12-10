@@ -312,6 +312,7 @@ export default function Home() {
   const locationRefMobile = useRef(null);
   const filtersRefDesktop = useRef(null);
   const filtersRefMobile = useRef(null);
+  const initialGeoRequestedRef = useRef(false);
   const mapSectionRef = useRef(null);
   const locationDropdownPressRef = useRef(false);
   const currentLocationRequestRef = useRef(false);
@@ -358,28 +359,35 @@ export default function Home() {
     if (savedRadius != null) setRadiusMi(Number(savedRadius) || 5);
     let cancelled = false;
     (async () => {
-      if (!navigator?.geolocation) return;
+      if (!navigator?.geolocation || initialGeoRequestedRef.current) return;
+      const requestGeo = () => {
+        initialGeoRequestedRef.current = true;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (cancelled) return;
+            if (!centerLockedRef.current) {
+              setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+              setCenterLabel('Current location');
+              setAddrQuery('Current location', { keepLocked: true });
+            }
+          },
+          () => {},
+          { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 }
+        );
+      };
       try {
         if (navigator.permissions?.query) {
           const status = await navigator.permissions.query({ name: 'geolocation' });
           if (cancelled) return;
-          if (status.state === 'granted') {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => {
-                if (cancelled) return;
-                if (!centerLockedRef.current) {
-                  setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                  setCenterLabel('Current location');
-                  setAddrQuery('Current location', { keepLocked: true });
-                }
-              },
-              () => {},
-              { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 }
-            );
+          if (status.state === 'granted' || status.state === 'prompt') {
+            requestGeo();
           }
+        } else {
+          requestGeo(); // fallback: ask once
         }
       } catch (error) {
         console.debug('Geolocation permission query failed', error);
+        requestGeo();
       }
     })();
     return () => { cancelled = true; };
