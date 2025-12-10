@@ -1,5 +1,5 @@
 // frontend/src/pages/RegisterBusiness.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fetchJson } from '../utils/apiClient.js';
@@ -17,6 +17,7 @@ const emptyForm = {
   state: '',
   zip: '',
   location: '',
+  hide_address: false,
   lat: null,
   lng: null,
 };
@@ -37,9 +38,38 @@ export default function Signup() {
   const [vetAnswers, setVetAnswers] = useState({});
   const [vetOther, setVetOther] = useState({});
   const [vetSearch, setVetSearch] = useState({});
+  const [vetOpen, setVetOpen] = useState({});
+  const [vetGroupOpen, setVetGroupOpen] = useState({});
+  const industriesMenuRef = useRef(null);
+  const isDirty = useMemo(() => {
+    const hasForm = Object.values({ ...form, ...account }).some((v) => (v ?? '').toString().trim());
+    const hasVet = Object.keys(vetAnswers).length > 0 || Object.keys(vetOther).length > 0;
+    return hasForm || hasVet;
+  }, [form, account, vetAnswers, vetOther]);
 
   const addr = useAddressSearch();
   const vetAddr = useAddressSearch();
+
+  useEffect(() => {
+    const onDown = (e) => {
+      const menu = industriesMenuRef.current;
+      if (menu && !menu.contains(e.target)) {
+        setVetOpen((prev) => ({ ...prev, industries: false }));
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
 
   // Unified page: if not authenticated, show account creation section at top
 
@@ -76,7 +106,6 @@ export default function Signup() {
     return sections.some((section) =>
       (section.fields || []).some((field) => {
         if (!field.required) return false;
-        if (field.id === 'address' && vetAnswers.hide_address) return false;
         if (field.type === 'multiselect') {
           const selected = Array.isArray(vetAnswers[field.id]) ? vetAnswers[field.id] : [];
           const other = vetOther[field.id]?.trim();
@@ -111,6 +140,7 @@ export default function Signup() {
         description: form.description || null,
         phone_number: form.phone_number || null,
         location: form.location || manualLocation(form),
+        hide_address: !!form.hide_address,
         lat: form.lat,
         lng: form.lng,
         address1: form.address1 || null,
@@ -187,22 +217,7 @@ export default function Signup() {
 
   const renderVetField = (field) => {
     const value = vetAnswers[field.id] ?? '';
-    if (field.id === 'address') {
-      return (
-        <div className="space-y-2">
-          <AddressSearch
-            state={vetAddr.state}
-            actions={vetAddr.actions}
-            onPick={(selection) => {
-              vetAddr.state.setQuery(selection.label, { keepLocked: true });
-              vetAddr.actions.lock();
-              handleVetChange(field.id, selection.label || '');
-            }}
-          />
-          <p className="text-xs text-white/60">Start typing to search and select your address (optional).</p>
-        </div>
-      );
-    }
+    if (field.id === 'address' || field.id === 'hide_address') return null;
     switch (field.type) {
       case 'text':
       case 'url':
@@ -236,7 +251,8 @@ export default function Signup() {
         const allOptions = (field.groups || []).flatMap((g) => g.options || []);
         const uniqueOptions = Array.from(new Set(allOptions));
         const searchVal = vetSearch[field.id] || '';
-        const filtered = uniqueOptions.filter((opt) => opt.toLowerCase().includes(searchVal.toLowerCase()));
+        const filtered = (searchVal ? uniqueOptions.filter((opt) => opt.toLowerCase().includes(searchVal.toLowerCase())) : uniqueOptions);
+        const isOpen = !!vetOpen[field.id] || !!searchVal;
 
         const addFreeform = (text) => {
           const trimmed = text.trim();
@@ -244,6 +260,48 @@ export default function Signup() {
           setVetOther((prev) => ({ ...prev, [field.id]: '' }));
           setVetSearch((prev) => ({ ...prev, [field.id]: '' }));
           toggleMulti(field.id, trimmed);
+          setVetOpen((prev) => ({ ...prev, [field.id]: false }));
+        };
+
+        const renderGroups = () => {
+          return (field.groups || []).map((group) => {
+            const groupId = `${field.id}-${group.label}`;
+            const open = vetGroupOpen[groupId] ?? false;
+            const groupOptions = (group.options || []).filter((opt) =>
+              opt.toLowerCase().includes(searchVal.toLowerCase())
+            );
+            if (!groupOptions.length) return null;
+            return (
+              <div key={group.label} className="border-b border-white/10 last:border-0">
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/5"
+                  onClick={() => setVetGroupOpen((prev) => ({ ...prev, [groupId]: !open }))}
+                >
+                  {group.label}
+                  <span className="text-xs text-white/60">{open ? '−' : '+'}</span>
+                </button>
+                {open && (
+                  <div className="py-2 px-3 space-y-1">
+                    {groupOptions.map((opt) => {
+                      const checked = selected.includes(opt);
+                      return (
+                        <label key={opt} className="flex items-center gap-2 text-sm text-white/80 hover:bg-white/5 rounded-md px-2 py-1">
+                          <input
+                            type="checkbox"
+                            className="accent-[var(--blue,#5d85ff)]"
+                            checked={checked}
+                            onChange={() => toggleMulti(field.id, opt)}
+                          />
+                          {opt}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          });
         };
 
         return (
@@ -264,12 +322,13 @@ export default function Signup() {
               ))}
             </div>
 
-            <div className="relative">
+            <div className="relative" ref={field.id === 'industries' ? industriesMenuRef : null}>
               <input
                 className="w-full p-3 rounded-lg bg-white/5 border border-white/10"
-                placeholder="Type to search industries or add your own"
+                placeholder="Search or browse industries"
                 value={searchVal}
                 onChange={(e) => setVetSearch((prev) => ({ ...prev, [field.id]: e.target.value }))}
+                onFocus={() => setVetOpen((prev) => ({ ...prev, [field.id]: true }))}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -277,21 +336,9 @@ export default function Signup() {
                   }
                 }}
               />
-              {searchVal && filtered.length > 0 && (
-                <div className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto rounded-lg bg-[var(--bg)] border border-white/10 shadow-xl">
-                  {filtered.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      className="w-full text-left px-3 py-2 hover:bg-white/5 text-sm"
-                      onClick={() => {
-                        toggleMulti(field.id, opt);
-                        setVetSearch((prev) => ({ ...prev, [field.id]: '' }));
-                      }}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+              {isOpen && (
+                <div className="absolute z-20 mt-1 w-full max-h-72 overflow-y-auto rounded-lg bg-[var(--bg)] border border-white/10 shadow-xl">
+                  {renderGroups()}
                 </div>
               )}
             </div>
@@ -299,18 +346,32 @@ export default function Signup() {
             {field.allowOther && (
               <div className="space-y-1">
                 <label className="text-sm text-white/80">Other</label>
-                <input
-                  className="w-full p-3 rounded-lg bg-white/5 border border-white/10"
-                  placeholder="Add another industry"
-                  value={otherVal}
-                  onChange={(e) => setVetOther((prev) => ({ ...prev, [field.id]: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
+                <div className="flex gap-2">
+                  <input
+                    className="w-full p-3 rounded-lg bg-white/5 border border-white/10"
+                    placeholder="Add another industry"
+                    value={otherVal}
+                    onChange={(e) => setVetOther((prev) => ({ ...prev, [field.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addFreeform(otherVal);
+                        setVetOpen((prev) => ({ ...prev, [field.id]: false }));
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-sm"
+                    onClick={() => {
                       addFreeform(otherVal);
-                    }
-                  }}
-                />
+                      setVetOpen((prev) => ({ ...prev, [field.id]: false }));
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+                <p className="text-xs text-white/60">Use Add to include multiple custom industries.</p>
               </div>
             )}
           </div>
@@ -346,7 +407,11 @@ export default function Signup() {
               <div key={field.id} className="space-y-1">
                 <label className="block text-sm font-medium">
                   {field.label}
-                  {field.required && <span className="text-red-300 ml-1">*</span>}
+                  {field.required ? (
+                    <span className="text-red-300 ml-1">*</span>
+                  ) : (
+                    <span className="text-white/60 ml-1 text-xs">* Not required</span>
+                  )}
                 </label>
                 {field.helper && <p className="text-xs text-white/60">{field.helper}</p>}
                 {renderVetField(field)}
@@ -391,7 +456,9 @@ export default function Signup() {
               {!isAuthenticated && (
                 <>
                   <div>
-                    <label className="block text-sm mb-1">Email</label>
+                <label className="block text-sm mb-1">
+                  Email <span className="text-red-300">*</span>
+                </label>
                     <input
                       type="email"
                       className="w-full p-3 rounded-lg"
@@ -401,7 +468,9 @@ export default function Signup() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Username</label>
+                <label className="block text-sm mb-1">
+                  Username <span className="text-red-300">*</span>
+                </label>
                     <input
                       className="w-full p-3 rounded-lg"
                       value={account.display_name}
@@ -410,7 +479,9 @@ export default function Signup() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Password</label>
+                <label className="block text-sm mb-1">
+                  Password <span className="text-red-300">*</span>
+                </label>
                     <input
                       type="password"
                       className="w-full p-3 rounded-lg"
@@ -422,7 +493,9 @@ export default function Signup() {
                 </>
               )}
               <div>
-                <label className="block text-sm mb-1">Business name</label>
+                <label className="block text-sm mb-1">
+                  Business name <span className="text-red-300">*</span>
+                </label>
                 <input
                   className="w-full p-3 rounded-lg"
                   value={form.name}
@@ -432,7 +505,9 @@ export default function Signup() {
               </div>
 
               <div>
-                <label className="block text-sm mb-1">Description</label>
+                <label className="block text-sm mb-1">
+                  Description <span className="text-red-300">*</span>
+                </label>
                 <textarea
                   className="w-full p-3 rounded-lg h-24 resize-none"
                   value={form.description}
@@ -442,7 +517,9 @@ export default function Signup() {
               </div>
 
               <div>
-                <label className="block text-sm mb-1">Phone number</label>
+                <label className="block text-sm mb-1">
+                  Phone number <span className="text-red-300">*</span>
+                </label>
                 <input
                   className="w-full p-3 rounded-lg"
                   value={form.phone_number}
@@ -451,12 +528,12 @@ export default function Signup() {
                 />
               </div>
 
-              {addressMode === 'search' ? (
-                <>
-                  <AddressSearch
-                    state={addr.state}
-                    actions={addr.actions}
-                    onPick={(selection) => {
+                {addressMode === 'search' ? (
+                  <>
+                    <AddressSearch
+                      state={addr.state}
+                      actions={addr.actions}
+                      onPick={(selection) => {
                       if (selection.lat != null && selection.lng != null) {
                         setForm((prev) => ({ ...prev, lat: selection.lat, lng: selection.lng }));
                       }
@@ -484,11 +561,22 @@ export default function Signup() {
                       Can't find the address?
                     </button>
                   </div>
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm mb-1">Street</label>
+                  <label className="inline-flex items-center gap-2 text-sm text-white/80 mt-2">
+                    <input
+                      type="checkbox"
+                      className="accent-[var(--blue,#5d85ff)]"
+                      checked={form.hide_address}
+                      onChange={(e) => setField('hide_address', e.target.checked)}
+                    />
+                    Hide my address from public map
+                  </label>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm mb-1">
+                      Street <span className="text-white/60 text-xs ml-1">* Not required</span>
+                    </label>
                     <input
                       className="w-full p-3 rounded-lg"
                       value={form.address1}
@@ -497,7 +585,9 @@ export default function Signup() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-sm mb-1">City</label>
+                    <label className="block text-sm mb-1">
+                      City <span className="text-white/60 text-xs ml-1">* Not required</span>
+                    </label>
                       <input
                         className="w-full p-3 rounded-lg"
                         value={form.city}
@@ -505,7 +595,9 @@ export default function Signup() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">State</label>
+                    <label className="block text-sm mb-1">
+                      State <span className="text-white/60 text-xs ml-1">* Not required</span>
+                    </label>
                       <input
                         className="w-full p-3 rounded-lg"
                         value={form.state}
@@ -513,7 +605,9 @@ export default function Signup() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">ZIP</label>
+                    <label className="block text-sm mb-1">
+                      ZIP <span className="text-white/60 text-xs ml-1">* Not required</span>
+                    </label>
                       <input
                         className="w-full p-3 rounded-lg"
                         value={form.zip}

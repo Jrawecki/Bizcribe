@@ -1360,6 +1360,12 @@ textarea::placeholder {
   pointer-events: auto;
 }
 
+.map-biz-sheet__content--scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
 .map-biz-sheet__top {
   display: flex;
   align-items: center;
@@ -1389,6 +1395,19 @@ textarea::placeholder {
   grid-template-columns: 1fr 2fr;
   gap: 10px;
   align-items: start;
+}
+
+.map-biz-sheet__content--scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.map-biz-sheet__cluster-card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .map-biz-sheet__image {

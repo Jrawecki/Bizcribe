@@ -183,7 +183,7 @@ sections:
         required: true
         options:
           - "$50,000 and Below"
-          - "$50,000 – $100,000"
+          - "$50,000 - $100,000"
           - "$100,000 - $250,000"
           - "$250,000 - $500,000"
           - "$500,000 - $750,000"
@@ -203,20 +203,10 @@ sections:
         maxLength: 32
 
   - id: presence
-    title: "Presence & location"
+    title: "Presence"
     fields:
       - id: website
         label: "Website"
         type: url
         placeholder: "https://example.com"
-        required: false
-      - id: address
-        label: "Business address"
-        type: text
-        placeholder: "Street, city, state, ZIP"
-        required: false
-        helper: "You can hide your address if you prefer."
-      - id: hide_address
-        label: "Hide my address from public listing"
-        type: toggle
         required: false

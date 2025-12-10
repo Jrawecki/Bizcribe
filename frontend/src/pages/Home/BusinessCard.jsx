@@ -20,7 +20,7 @@ export default function BusinessCard({ biz, onDelete, canManage }) {
         <span className="chip inline-flex items-center justify-center w-6 h-6">
           <MapPin size={14} />
         </span>
-        {biz.location}
+        {biz.hide_address ? 'Address hidden' : biz.location}
       </div>
       {canManage && (
         <button

@@ -76,7 +76,7 @@ export default function About() {
           </p>
         </div>
         <a
-          href="/add-business"
+          href="/register-business"
           className="inline-flex items-center justify-center rounded-xl bg-[var(--ceramic,#5d85ff)] px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110"
         >
           Add your business

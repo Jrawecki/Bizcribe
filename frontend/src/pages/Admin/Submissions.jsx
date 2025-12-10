@@ -219,6 +219,22 @@ export default function AdminSubmissions() {
                   <div className="col-span-2"><label className="text-xs opacity-75">Description</label><div>{selected.description || '-'}</div></div>
                 </div>
 
+                {selected.vetting?.answers && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-semibold mb-2">Vetting responses</h4>
+                    <div className="space-y-2 text-sm">
+                      {Object.entries(selected.vetting.answers).map(([key, val]) => (
+                        <div key={key} className="border border-[#2a2d30] rounded-lg p-2">
+                          <div className="text-xs uppercase tracking-wide opacity-60">{key}</div>
+                          <div className="mt-1">
+                            {Array.isArray(val) ? (val.length ? val.join(', ') : '-') : (val || '-')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-3">
                   <label className="text-sm mb-1 block">Notes (for rejection)</label>
                   <textarea rows={3} value={actionNotes} onChange={(e) => setActionNotes(e.target.value)} />

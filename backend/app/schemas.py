@@ -9,6 +9,7 @@ class SmallBusinessBase(BaseModel):
     description: str | None = None
     phone_number: str | None = None
     location: str | None = None
+    hide_address: bool | None = False
     address1: str | None = None
     city: str | None = None
     state: str | None = None
@@ -32,6 +33,7 @@ class SmallBusiness(SmallBusinessBase):
     created_by_id: int | None = None
     approved_at: datetime | None = None
     approved_by_id: int | None = None
+    hide_address: bool | None = False
 
     class Config:
         from_attributes = True  # Pydantic v2

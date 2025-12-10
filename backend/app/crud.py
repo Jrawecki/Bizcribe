@@ -1,6 +1,6 @@
 # backend/app/crud.py
 from typing import Optional, List, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import and_, or_
 from . import models, schemas
 from .models_user import BusinessMembership, MembershipRole, User, UserRole
@@ -114,6 +114,7 @@ def create_business(
         description=biz.description,
         phone_number=biz.phone_number,
         location=biz.location,
+        hide_address=bool(biz.hide_address) if biz.hide_address is not None else False,
         address1=biz.address1,
         city=biz.city,
         state=biz.state,
@@ -211,6 +212,7 @@ def create_business_submission(
         description=payload.description,
         phone_number=payload.phone_number,
         location=payload.location,
+        hide_address=bool(payload.hide_address) if payload.hide_address is not None else False,
         address1=payload.address1,
         city=payload.city,
         state=payload.state,
@@ -240,6 +242,7 @@ def get_pending_submissions(db: Session) -> List[models.BusinessSubmission]:
     """Legacy helper: all PENDING submissions ordered by newest."""
     return (
         db.query(models.BusinessSubmission)
+        .options(selectinload(models.BusinessSubmission.vetting))
         .filter(models.BusinessSubmission.status == models.BusinessSubmission.SubmissionStatus.PENDING.value)
         .order_by(models.BusinessSubmission.created_at.desc())
         .all()
@@ -249,6 +252,7 @@ def get_pending_submissions(db: Session) -> List[models.BusinessSubmission]:
 def get_submission(db: Session, submission_id: int) -> Optional[models.BusinessSubmission]:
     return (
         db.query(models.BusinessSubmission)
+        .options(selectinload(models.BusinessSubmission.vetting))
         .filter(models.BusinessSubmission.id == submission_id)
         .first()
     )
@@ -263,7 +267,7 @@ def search_submissions(
     skip: int = 0,
     limit: int = 50,
 ) -> Tuple[List[models.BusinessSubmission], int]:
-    q = db.query(models.BusinessSubmission)
+    q = db.query(models.BusinessSubmission).options(selectinload(models.BusinessSubmission.vetting))
     if status:
         q = q.filter(models.BusinessSubmission.status == status)
     if owner_id:
@@ -286,6 +290,7 @@ def search_submissions(
 def get_submissions_for_owner(db: Session, owner: User) -> List[models.BusinessSubmission]:
     return (
         db.query(models.BusinessSubmission)
+        .options(selectinload(models.BusinessSubmission.vetting))
         .filter(models.BusinessSubmission.owner_id == owner.id)
         .order_by(models.BusinessSubmission.created_at.desc())
         .all()
@@ -315,6 +320,8 @@ def approve_business_submission(db: Session, submission_id: int, *, reviewer: Us
             existing_business.is_approved = True
         existing_business.approved_at = datetime.utcnow()
         existing_business.approved_by_id = reviewer.id
+        # Keep hide_address in sync from submission
+        existing_business.hide_address = bool(submission.hide_address)
 
         if submission.vetting and submission.vetting.business_id is None:
             submission.vetting.business_id = existing_business.id
@@ -335,6 +342,7 @@ def approve_business_submission(db: Session, submission_id: int, *, reviewer: Us
         description=submission.description,
         phone_number=submission.phone_number,
         location=submission.location,
+        hide_address=submission.hide_address,
         address1=submission.address1,
         city=submission.city,
         state=submission.state,

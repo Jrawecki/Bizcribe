@@ -136,9 +136,10 @@ const haversineMi = (a, b) => {
   return (R * c) / 1.60934;
 };
 
-const formatAddress = (biz) =>
-  biz.location ||
-  [biz.address1, biz.city, biz.state].filter(Boolean).join(', ');
+const formatAddress = (biz) => {
+  if (biz.hide_address) return 'Address hidden';
+  return biz.location || [biz.address1, biz.city, biz.state].filter(Boolean).join(', ');
+};
 
 const buildDirectionsUrl = (biz) => {
   if (typeof biz.lat === 'number' && typeof biz.lng === 'number') {
@@ -166,12 +167,12 @@ const buildPopupData = (biz, center) => {
   const phone = biz.phone_number ? String(biz.phone_number).trim() : '';
   return {
     name: biz.name || 'Untitled',
-    address: formatAddress(biz) || '',
+    address: biz.hide_address ? '' : (formatAddress(biz) || ''),
     description: truncatedDescription,
     distanceLabel,
     phone,
     callHref: buildCallHref(biz),
-    directionsHref: buildDirectionsUrl(biz),
+    directionsHref: biz.hide_address ? '' : buildDirectionsUrl(biz),
     detailHref: biz?.id != null ? `/business/${biz.id}` : '',
   };
 };
@@ -306,6 +307,7 @@ export default function Home() {
     actions: { search: searchAddress, lock: lockAddressInput, unlock: unlockAddressInput },
   } = useAddressSearch();
   const centerLockedRef = useRef(false);
+  const restoreActiveRef = useRef(null);
   const locationRefDesktop = useRef(null);
   const locationRefMobile = useRef(null);
   const filtersRefDesktop = useRef(null);
@@ -675,7 +677,7 @@ export default function Home() {
   );
 
   const canUsePortal = typeof document !== 'undefined';
-  const activeBizInfo = activeBiz ? buildPopupData(activeBiz, center || WILMINGTON_CENTER) : null;
+  const activeBizInfo = activeBiz && !activeBiz.clusterItems ? buildPopupData(activeBiz, center || WILMINGTON_CENTER) : null;
 
   const locationRect = locationPanelRect || getVisibleLocationRect();
   const locationDropdown = canUsePortal && locationOpen && locationRect
@@ -819,9 +821,6 @@ export default function Home() {
                       onMouseDown={() => {
                         handleLocationFocus();
                       }}
-                      onMouseDown={() => {
-                        handleLocationFocus();
-                      }}
                       onChange={(e) => {
                         const value = e.target.value;
                         setAddrQuery(value);
@@ -883,21 +882,22 @@ export default function Home() {
             </div>
 
             <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-stretch">
-              <div
-                ref={mapSectionRef}
-                className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-none h-full"
-              >
-                <ResultsMap
-                  center={center}
-                  items={filtered}
-                  focusBusiness={focusBusiness}
-                  mapStyle={mapStyle}
-                  onCloseup={handleCloseupRequest}
-                  setCenter={setCenter}
-                  setCenterLabel={setCenterLabel}
+            <div
+              ref={mapSectionRef}
+              className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-none h-full"
+            >
+              <ResultsMap
+                center={center}
+                items={filtered.filter((b) => !b.hide_address)}
+                focusBusiness={focusBusiness}
+                mapStyle={mapStyle}
+                onCloseup={handleCloseupRequest}
+                setCenter={setCenter}
+                setCenterLabel={setCenterLabel}
                   radiusMi={radiusMi}
                   activeBiz={activeBiz}
                   setActiveBiz={setActiveBiz}
+                  restoreActiveRef={restoreActiveRef}
                 />
               </div>
 
@@ -1042,7 +1042,7 @@ export default function Home() {
                       const directions = (typeof biz.lat === 'number' && typeof biz.lng === 'number')
                         ? `https://www.google.com/maps/search/?api=1&query=${biz.lat},${biz.lng}`
                         : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(biz.location || biz.name)}`;
-                      const canFocus = typeof biz.lat === 'number' && typeof biz.lng === 'number';
+                      const canFocus = typeof biz.lat === 'number' && typeof biz.lng === 'number' && !biz.hide_address;
                       return (
                         <li
                           key={biz.id}
@@ -1088,15 +1088,17 @@ export default function Home() {
                                 Call
                               </a>
                             )}
-                            <a
-                              href={directions}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn btn-primary text-sm rounded-xl px-3 py-2"
-                            >
-                              Directions
-                            </a>
-                            {canFocus && (
+                            {!biz.hide_address && (
+                              <a
+                                href={directions}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-primary text-sm rounded-xl px-3 py-2"
+                              >
+                                Directions
+                              </a>
+                            )}
+                            {canFocus && !biz.hide_address && (
                               <button
                                 type="button"
                                 className="btn btn-ghost text-sm rounded-xl px-3 py-2"
@@ -1117,12 +1119,97 @@ export default function Home() {
 
             {mobilePeekList}
 
+      {activeBiz?.clusterItems && (
+        <div className="map-biz-sheet map-biz-sheet--mobile lg:hidden">
+          <button
+            type="button"
+            className="map-biz-sheet__handle"
+            onClick={() => {
+              if (restoreActiveRef.current) {
+                restoreActiveRef.current();
+              } else {
+                setActiveBiz(null);
+              }
+            }}
+            aria-label="Close details"
+          />
+          <div className="map-biz-sheet__content map-biz-sheet__content--scroll">
+            <div className="map-biz-sheet__header">
+              <div>
+                <div className="map-biz-sheet__title">Businesses in this area</div>
+                <div className="map-biz-sheet__subtitle text-white/70 text-sm">
+                  {activeBiz.clusterItems.length} result{activeBiz.clusterItems.length === 1 ? '' : 's'}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {activeBiz.clusterItems.map((biz) => {
+                const info = buildPopupData(biz, center || WILMINGTON_CENTER);
+                return (
+                  <div key={biz.id ?? `${biz.lat}-${biz.lng}`} className="map-biz-sheet__cluster-card">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="map-biz-sheet__title text-base">{info.name}</div>
+                        {info.address && (
+                          <div className="map-biz-sheet__subtitle">
+                            <MapPin size={14} className="text-white/50" />
+                            <span className="truncate">{info.address}</span>
+                          </div>
+                        )}
+                        {info.description && (
+                          <p className="text-sm text-white/70 mt-1 line-clamp-2">{info.description}</p>
+                        )}
+                      </div>
+                      {info.distanceLabel && <span className="chip chip--pill">{info.distanceLabel}</span>}
+                    </div>
+                    <div className="map-biz-sheet__actions">
+                      {info.callHref && (
+                        <a className="btn btn-ghost" href={info.callHref}>
+                          <Phone size={16} />
+                          Call
+                        </a>
+                      )}
+                      {info.directionsHref && (
+                        <a className="btn btn-primary" href={info.directionsHref} target="_blank" rel="noreferrer">
+                          <ExternalLink size={16} />
+                          Directions
+                        </a>
+                      )}
+                      {biz?.id != null && (
+                        <Link className="btn btn-ghost" to={`/business/${biz.id}`}>
+                          Details
+                        </Link>
+                      )}
+                      {typeof biz.lat === 'number' && typeof biz.lng === 'number' && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => handleFocusBusiness(biz)}
+                        >
+                          Zoom to pin
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeBizInfo && (
         <div className="map-biz-sheet map-biz-sheet--mobile lg:hidden">
           <button
             type="button"
             className="map-biz-sheet__handle"
-            onClick={() => setActiveBiz(null)}
+            onClick={() => {
+              if (restoreActiveRef.current) {
+                restoreActiveRef.current();
+              } else {
+                setActiveBiz(null);
+              }
+            }}
             aria-label="Close details"
           />
           <div className="map-biz-sheet__header">
@@ -1216,6 +1303,7 @@ function ResultsMap({
   radiusMi,
   activeBiz,
   setActiveBiz,
+  restoreActiveRef,
 }) {
   const [mapboxFailed, setMapboxFailed] = useState(!MAPBOX_ENABLED);
   const [mapReady, setMapReady] = useState(false);
@@ -1230,6 +1318,9 @@ function ResultsMap({
   const lastStyleRef = useRef(mapStyle);
   const pendingCloseupRef = useRef(false);
   const suppressCloseRef = useRef(false);
+  const lastMarkersKeyRef = useRef('');
+  const lastViewRef = useRef(null);
+  const restoringRef = useRef(false);
 
   useEffect(() => { centerRef.current = center; }, [center]);
 
@@ -1264,16 +1355,52 @@ function ResultsMap({
     }
   }, []);
 
+  const getPreferredZoom = useCallback(() => {
+    const map = mapRef.current;
+    const maxZoom = map?.getMaxZoom?.() ?? 20;
+    return Math.max(3, maxZoom - 8); // 8 clicks out from max
+  }, []);
+
+  const closeActiveAndRestore = useCallback(() => {
+    setActiveBiz(null);
+    const map = mapRef.current;
+    if (!map || restoringRef.current) return;
+    if (lastViewRef.current && lastViewRef.current.center && typeof lastViewRef.current.zoom === 'number') {
+      const { center: prevCenter, zoom: prevZoom } = lastViewRef.current;
+      restoringRef.current = true;
+      map.flyTo({
+        center: [prevCenter.lng, prevCenter.lat],
+        zoom: prevZoom,
+        duration: 400,
+        essential: true,
+      });
+      map.once('moveend', () => {
+        restoringRef.current = false;
+      });
+    }
+  }, [setActiveBiz]);
+
+  useEffect(() => {
+    if (restoreActiveRef) {
+      restoreActiveRef.current = closeActiveAndRestore;
+      return () => {
+        if (restoreActiveRef.current === closeActiveAndRestore) {
+          restoreActiveRef.current = null;
+        }
+      };
+    }
+    return undefined;
+  }, [restoreActiveRef, closeActiveAndRestore]);
+
   const focusOnBusiness = useCallback(() => {
     if (!focusBusiness || mapboxFailed || !mapRef.current) return;
     const coords = toLngLatTuple(focusBusiness);
     if (!coords) return;
     const [lng, lat] = coords;
     const map = mapRef.current;
-    const closeupRequested = pendingCloseupRef.current;
-    const targetZoom = closeupRequested
-      ? Math.min(19, Math.max(map.getZoom(), 18))
-      : Math.max(map.getZoom(), 16);
+    const targetZoom = getPreferredZoom();
+    const mapCenter = map.getCenter();
+    lastViewRef.current = { center: { lat: mapCenter.lat, lng: mapCenter.lng }, zoom: map.getZoom() };
     suppressCloseRef.current = true;
 
     map.flyTo({
@@ -1289,7 +1416,7 @@ function ResultsMap({
       setActiveBiz(focusBusiness);
     });
 
-  }, [focusBusiness, mapboxFailed, setActiveBiz]);
+  }, [focusBusiness, mapboxFailed, setActiveBiz, getPreferredZoom]);
 
   const updateMapboxMarkerAppearance = useCallback(() => {
     const map = mapRef.current;
@@ -1322,6 +1449,22 @@ function ResultsMap({
 
   const rebuildMarkers = useCallback(() => {
     if (mapboxFailed || !mapRef.current) return;
+
+    const map = mapRef.current;
+    const zoom = map.getZoom();
+    const rawItems = followMapCenter && Array.isArray(followItems) && followItems.length
+      ? followItems
+      : items;
+    const sourceItems = (rawItems || []).filter((biz) => !biz.hide_address);
+    const clusteringEnabled = zoom < 16;
+    const center = map.getCenter();
+    const centerKey = `${center?.lat?.toFixed?.(4) ?? ''},${center?.lng?.toFixed?.(4) ?? ''}`;
+    const key = `${clusteringEnabled ? 'c' : 'm'}:${zoom.toFixed(2)}:${centerKey}:${sourceItems
+      .map((b) => b.id || `${b.lat},${b.lng}`)
+      .join('|')}`;
+    if (key === lastMarkersKeyRef.current) return;
+    lastMarkersKeyRef.current = key;
+
     markersRef.current.forEach((marker) => {
       cleanupMarkerElement(marker);
       marker.remove();
@@ -1332,14 +1475,6 @@ function ResultsMap({
       marker.remove();
     });
     clusterMarkersRef.current = [];
-    setActiveBiz(null);
-
-    const map = mapRef.current;
-    const zoom = map.getZoom();
-    const sourceItems = followMapCenter && Array.isArray(followItems) && followItems.length
-      ? followItems
-      : items;
-    const clusteringEnabled = zoom < 16;
     const thresholdPx = clusteringEnabled
       ? clamp(44 - ((zoom - 10) * 6), 14, 44)
       : 0;
@@ -1352,7 +1487,21 @@ function ResultsMap({
       marker.addTo(map);
       element.addEventListener('click', (e) => {
         e.stopPropagation();
+        const mapCenter = map.getCenter();
+        lastViewRef.current = { center: { lat: mapCenter.lat, lng: mapCenter.lng }, zoom: map.getZoom() };
         setActiveBiz(biz);
+        suppressCloseRef.current = true;
+        const targetZoom = getPreferredZoom();
+        map.flyTo({
+          center: [biz.lng, biz.lat],
+          zoom: targetZoom,
+          duration: 500,
+          essential: true,
+        });
+        map.once('moveend', () => {
+          suppressCloseRef.current = false;
+          setActiveBiz(biz);
+        });
       });
       if (biz?.id != null) {
         markersRef.current.set(biz.id, marker);
@@ -1407,8 +1556,7 @@ function ResultsMap({
           clusterMarkersRef.current.push(marker);
           element.onclick = (e) => {
             e.stopPropagation();
-            const targetZoom = Math.min(map.getZoom() + 2.5, 18);
-            map.easeTo({ center: [lng, lat], zoom: targetZoom, duration: 400, essential: true });
+            setActiveBiz({ clusterItems: cluster.items });
           };
         } else {
           addBusinessMarker(cluster.items[0]);
@@ -1496,7 +1644,9 @@ function ResultsMap({
     const handleResize = () => {
       mapRef.current?.resize();
     };
-    const handleMapClick = () => setActiveBiz(null);
+    const handleMapClick = () => {
+      closeActiveAndRestore();
+    };
     const handleUserMove = () => {
       if (suppressCloseRef.current) return;
       if (activeBiz) setActiveBiz(null);
@@ -1512,7 +1662,7 @@ function ResultsMap({
       map.off('dragstart', handleUserMove);
       map.off('zoomstart', handleUserMove);
     };
-  }, [mapboxFailed, setActiveBiz, activeBiz]);
+  }, [mapboxFailed, setActiveBiz, activeBiz, closeActiveAndRestore]);
 
   useEffect(() => {
     if (mapboxFailed) {
@@ -1542,14 +1692,17 @@ function ResultsMap({
     if (mapboxFailed || !mapRef.current) return;
     const map = mapRef.current;
     const handleMoveEnd = () => {
-      if (!followMapCenter) return;
       const c = map.getCenter();
       centerRef.current = { lat: c.lat, lng: c.lng };
-      fetchFollowItems({ lat: c.lat, lng: c.lng });
+      if (followMapCenter) {
+        fetchFollowItems({ lat: c.lat, lng: c.lng });
+      } else {
+        rebuildMarkers();
+      }
     };
     map.on('moveend', handleMoveEnd);
     return () => map.off('moveend', handleMoveEnd);
-  }, [followMapCenter, mapboxFailed, fetchFollowItems]);
+  }, [followMapCenter, mapboxFailed, fetchFollowItems, rebuildMarkers]);
 
   useEffect(() => {
     focusOnBusiness();
@@ -1582,7 +1735,11 @@ function ResultsMap({
     );
   }
 
-  const activeInfo = activeBiz ? buildPopupData(activeBiz, centerRef.current || center) : null;
+  const activeInfo = activeBiz
+    ? activeBiz.clusterItems
+      ? null
+      : buildPopupData(activeBiz, centerRef.current || center)
+    : null;
 
   return (
     <div className="absolute inset-0">
@@ -1610,72 +1767,170 @@ function ResultsMap({
           Reset view
         </button>
       </div>
-      {activeInfo && (
+      {activeBiz?.clusterItems && (
         <div className="map-biz-overlay map-biz-overlay--desktop hidden lg:flex">
           <div className="map-biz-sheet map-biz-sheet--desktop">
             <div className="map-biz-sheet__top">
               <button
                 type="button"
                 className="map-biz-sheet__handle"
-                onClick={() => setActiveBiz(null)}
+                onClick={closeActiveAndRestore}
                 aria-label="Close details"
               />
               <button
                 type="button"
                 className="map-biz-sheet__close"
-                onClick={() => setActiveBiz(null)}
+                onClick={closeActiveAndRestore}
                 aria-label="Close"
               >
                 <X size={16} />
               </button>
             </div>
-            <div className="map-biz-sheet__header">
-              <div>
-                <div className="map-biz-sheet__title">{activeInfo.name}</div>
-                {activeInfo.address && (
-                  <div className="map-biz-sheet__subtitle">
-                    <MapPin size={14} className="text-white/50" />
-                    <span>{activeInfo.address}</span>
+            <div className="map-biz-sheet__content map-biz-sheet__content--scroll">
+              <div className="map-biz-sheet__header">
+                <div>
+                  <div className="map-biz-sheet__title">Businesses in this area</div>
+                  <div className="map-biz-sheet__subtitle text-white/70 text-sm">
+                    {activeBiz.clusterItems.length} result{activeBiz.clusterItems.length === 1 ? '' : 's'}
                   </div>
-                )}
-              </div>
-              {activeInfo.distanceLabel && (
-                <span className="chip chip--pill">{activeInfo.distanceLabel}</span>
-              )}
-            </div>
-            <div className="map-biz-sheet__meta">
-              <div className="map-biz-sheet__image" aria-hidden="true">
-                <span>Photo</span>
-              </div>
-              <div className="map-biz-sheet__summary">
-                {activeInfo.description && (
-                  <p className="map-biz-sheet__desc">{activeInfo.description}</p>
-                )}
-                <div className="map-biz-sheet__tags">
-                  <span className="chip">Reviews</span>
-                  <span className="chip">Hours</span>
-                  <span className="chip">Amenities</span>
                 </div>
               </div>
+              <div className="space-y-3">
+                {activeBiz.clusterItems.map((biz) => {
+                  const info = buildPopupData(biz, centerRef.current || center);
+                  return (
+                    <div key={biz.id ?? `${biz.lat}-${biz.lng}`} className="map-biz-sheet__cluster-card">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="map-biz-sheet__title text-base">{info.name}</div>
+                          {info.address && (
+                            <div className="map-biz-sheet__subtitle">
+                              <MapPin size={14} className="text-white/50" />
+                              <span className="truncate">{info.address}</span>
+                            </div>
+                          )}
+                          {info.description && (
+                            <p className="text-sm text-white/70 mt-1 line-clamp-2">{info.description}</p>
+                          )}
+                        </div>
+                        {info.distanceLabel && <span className="chip chip--pill">{info.distanceLabel}</span>}
+                      </div>
+                      <div className="map-biz-sheet__actions">
+                        {info.callHref && (
+                          <a className="btn btn-ghost" href={info.callHref}>
+                            <Phone size={16} />
+                            Call
+                          </a>
+                        )}
+                      {info.directionsHref && (
+                          <a className="btn btn-primary" href={info.directionsHref} target="_blank" rel="noreferrer">
+                            <ExternalLink size={16} />
+                            Directions
+                          </a>
+                        )}
+                        {biz?.id != null && (
+                          <Link className="btn btn-ghost" to={`/business/${biz.id}`}>
+                            Details
+                          </Link>
+                        )}
+                        {typeof biz.lat === 'number' && typeof biz.lng === 'number' && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            onClick={() => {
+                              const map = mapRef.current;
+                              if (!map) return;
+                              const targetZoom = getPreferredZoom();
+                              map.flyTo({
+                                center: [biz.lng, biz.lat],
+                                zoom: targetZoom,
+                                duration: 600,
+                                essential: true,
+                              });
+                              setActiveBiz(biz);
+                            }}
+                          >
+                            Zoom to pin
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="map-biz-sheet__actions">
-              {activeInfo.callHref && (
-                <a className="btn btn-ghost" href={activeInfo.callHref}>
-                  <Phone size={16} />
-                  Call
-                </a>
-              )}
-              {activeInfo.directionsHref && (
-                <a className="btn btn-primary" href={activeInfo.directionsHref} target="_blank" rel="noreferrer">
-                  <ExternalLink size={16} />
-                  Directions
-                </a>
-              )}
-              {activeBiz?.id != null && (
-                <Link className="btn btn-ghost" to={`/business/${activeBiz.id}`}>
-                  Details
-                </Link>
-              )}
+          </div>
+        </div>
+      )}
+
+      {activeInfo && !activeBiz?.clusterItems && (
+        <div className="map-biz-overlay map-biz-overlay--desktop hidden lg:flex">
+          <div className="map-biz-sheet map-biz-sheet--desktop">
+            <div className="map-biz-sheet__top">
+              <button
+                type="button"
+                className="map-biz-sheet__handle"
+                onClick={closeActiveAndRestore}
+                aria-label="Close details"
+              />
+              <button
+                type="button"
+                className="map-biz-sheet__close"
+                onClick={closeActiveAndRestore}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="map-biz-sheet__content map-biz-sheet__content--scroll">
+              <div className="map-biz-sheet__header">
+                <div>
+                  <div className="map-biz-sheet__title">{activeInfo.name}</div>
+                  {activeInfo.address && (
+                    <div className="map-biz-sheet__subtitle">
+                      <MapPin size={14} className="text-white/50" />
+                      <span>{activeInfo.address}</span>
+                    </div>
+                  )}
+                </div>
+                {activeInfo.distanceLabel && (
+                  <span className="chip chip--pill">{activeInfo.distanceLabel}</span>
+                )}
+              </div>
+              <div className="map-biz-sheet__meta">
+                <div className="map-biz-sheet__image" aria-hidden="true">
+                  <span>Photo</span>
+                </div>
+                <div className="map-biz-sheet__summary">
+                  {activeInfo.description && (
+                    <p className="map-biz-sheet__desc">{activeInfo.description}</p>
+                  )}
+                  <div className="map-biz-sheet__tags">
+                    <span className="chip">Reviews</span>
+                    <span className="chip">Hours</span>
+                    <span className="chip">Amenities</span>
+                  </div>
+                </div>
+              </div>
+              <div className="map-biz-sheet__actions">
+                {activeInfo.callHref && (
+                  <a className="btn btn-ghost" href={activeInfo.callHref}>
+                    <Phone size={16} />
+                    Call
+                  </a>
+                )}
+                {activeInfo.directionsHref && (
+                  <a className="btn btn-primary" href={activeInfo.directionsHref} target="_blank" rel="noreferrer">
+                    <ExternalLink size={16} />
+                    Directions
+                  </a>
+                )}
+                {activeBiz?.id != null && (
+                  <Link className="btn btn-ghost" to={`/business/${activeBiz.id}`}>
+                    Details
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>

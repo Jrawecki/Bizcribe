@@ -58,7 +58,7 @@ export default function BusinessDetail() {
   }, [id]);
 
   const hasCoords = useMemo(
-    () => biz && typeof biz.lat === 'number' && typeof biz.lng === 'number',
+    () => biz && !biz.hide_address && typeof biz.lat === 'number' && typeof biz.lng === 'number',
     [biz],
   );
 
@@ -212,69 +212,69 @@ export default function BusinessDetail() {
   if (loading) return <div className="p-6">Loading...</div>;
   if (error || !biz) return <div className="p-6">{error || 'Error'}</div>;
 
-  const directionsUrl = hasCoords
-    ? `https://www.google.com/maps/search/?api=1&query=${biz.lat},${biz.lng}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(biz.location || biz.address1 || biz.name)}`;
+  const showAddress = !biz?.hide_address;
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <Link to="/" className="underline">Back</Link>
       <h1 className="text-3xl font-bold mt-2">{biz.name}</h1>
-      <div className="opacity-80 mt-1">{biz.location}</div>
+      <div className="opacity-80 mt-1">{showAddress ? biz.location : 'Address hidden'}</div>
       {biz.phone_number && <div className="mt-1">Phone: {biz.phone_number}</div>}
       {biz.description && <p className="mt-4">{biz.description}</p>}
 
-      <div className="mt-6 rounded-xl overflow-hidden relative" style={{ height: 360 }}>
-        {!mapboxFailed && MAPBOX_ENABLED && hasCoords ? (
-          <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
-        ) : (
-          <MapContainer
-            center={[mapCenter.lat, mapCenter.lng]}
-            zoom={hasCoords ? 15 : 12}
-            style={{ height: '100%', width: '100%' }}
-            attributionControl={false}
-            whenCreated={(map) => {
-              leafletMapRef.current = map;
-              if (hasCoords) {
-                setTimeout(() => zoomToLocation(), 50);
-              }
-            }}
-          >
-            <TileLayer
-              url={tileProps.url}
-              attribution={tileProps.attribution}
-              tileSize={tileProps.tileSize}
-              maxZoom={tileProps.maxZoom}
-              detectRetina={tileProps.detectRetina}
-            />
-            {hasCoords && (
-              <Marker position={[biz.lat, biz.lng]} icon={markerIcon}>
-                <Popup>{biz.name}</Popup>
-              </Marker>
-            )}
-          </MapContainer>
-        )}
-        {mapboxFailed && MAPBOX_ENABLED && (
-          <div className="absolute top-3 left-3 z-10 rounded-lg bg-black/65 backdrop-blur px-3 py-2 text-xs text-white/85 pointer-events-none">
-            Mapbox unavailable - using fallback tiles.
-          </div>
-        )}
-        {hasCoords && (
-          <div className="absolute top-4 right-4 z-10 flex gap-2">
-            <button
-              type="button"
-              onClick={zoomToLocation}
-              className="btn btn-ghost bg-black/40 hover:bg-black/60 text-sm rounded-xl px-3 py-2"
+      {showAddress ? (
+        <div className="mt-6 rounded-xl overflow-hidden relative" style={{ height: 360 }}>
+          {!mapboxFailed && MAPBOX_ENABLED && hasCoords ? (
+            <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
+          ) : (
+            <MapContainer
+              center={[mapCenter.lat, mapCenter.lng]}
+              zoom={hasCoords ? 15 : 12}
+              style={{ height: '100%', width: '100%' }}
+              attributionControl={false}
+              whenCreated={(map) => {
+                leafletMapRef.current = map;
+                if (hasCoords) {
+                  setTimeout(() => zoomToLocation(), 50);
+                }
+              }}
             >
-              Zoom to location
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4">
-        <a href={directionsUrl} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-full btn-primary">Directions</a>
-      </div>
+              <TileLayer
+                url={tileProps.url}
+                attribution={tileProps.attribution}
+                tileSize={tileProps.tileSize}
+                maxZoom={tileProps.maxZoom}
+                detectRetina={tileProps.detectRetina}
+              />
+              {hasCoords && (
+                <Marker position={[biz.lat, biz.lng]} icon={markerIcon}>
+                  <Popup>{biz.name}</Popup>
+                </Marker>
+              )}
+            </MapContainer>
+          )}
+          {mapboxFailed && MAPBOX_ENABLED && (
+            <div className="absolute top-3 left-3 z-10 rounded-lg bg-black/65 backdrop-blur px-3 py-2 text-xs text-white/85 pointer-events-none">
+              Mapbox unavailable - using fallback tiles.
+            </div>
+          )}
+          {hasCoords && (
+            <div className="absolute top-4 right-4 z-10 flex gap-2">
+              <button
+                type="button"
+                onClick={zoomToLocation}
+                className="btn btn-ghost bg-black/40 hover:bg-black/60 text-sm rounded-xl px-3 py-2"
+              >
+                Zoom to location
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-xl border border-white/10 p-6 text-sm text-white/70">
+          Location is hidden for this business.
+        </div>
+      )}
     </div>
   );
 }
