@@ -11,6 +11,18 @@ const STORAGE_KEYS = {
   refresh: 'ph_refresh_token',
 };
 
+const API_BASE = (import.meta.env?.VITE_API_BASE || '').replace(/\/+$/, '');
+
+export function buildApiUrl(path) {
+  if (!path || /^https?:\/\//i.test(path)) return path;
+  if (!API_BASE || !path.startsWith('/')) return path;
+  return `${API_BASE}${path}`;
+}
+
+export function getApiBase() {
+  return API_BASE;
+}
+
 export function setTokens({ access_token, refresh_token }) {
   if (access_token) localStorage.setItem(STORAGE_KEYS.access, access_token);
   if (refresh_token) localStorage.setItem(STORAGE_KEYS.refresh, refresh_token);
@@ -43,7 +55,7 @@ async function refreshTokens() {
   const refresh = getRefreshToken();
   if (!refresh) throw new Error('No refresh token');
 
-  const res = await fetch('/api/auth/refresh', {
+  const res = await fetch(buildApiUrl('/api/auth/refresh'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refresh_token: refresh }),
@@ -61,7 +73,7 @@ export async function fetchJson(url, options = {}, retry = true) {
   const token = getAccessToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(buildApiUrl(url), { ...options, headers });
   if (res.status === 401 && retry) {
     try {
       await refreshTokens();

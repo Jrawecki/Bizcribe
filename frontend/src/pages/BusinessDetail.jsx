@@ -7,6 +7,7 @@ import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 
 import { MAPBOX_TOKEN, MAPBOX_ENABLED, mapboxStyleUrl, osmTileProps } from '../utils/tiles.js';
+import { buildApiUrl } from '../utils/apiClient.js';
 import { renderToString } from 'react-dom/server';
 import { MapPin } from 'lucide-react';
 
@@ -42,7 +43,7 @@ export default function BusinessDetail() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch(`/api/businesses/${id}`);
+        const res = await fetch(buildApiUrl(`/api/businesses/${id}`));
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         if (mounted) setBiz(data);

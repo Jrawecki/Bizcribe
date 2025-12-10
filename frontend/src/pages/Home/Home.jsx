@@ -28,7 +28,7 @@ import {
   osmTileProps,
   mapboxStyleUrl,
 } from '../../utils/tiles.js';
-import { fetchJsonWithTimeout } from '../../utils/apiClient.js';
+import { fetchJsonWithTimeout, getApiBase } from '../../utils/apiClient.js';
 
 const WILMINGTON_CENTER = { lat: 39.7391, lng: -75.5398 };
 const DEFAULT_ZOOM = 12;
@@ -531,7 +531,8 @@ export default function Home() {
     setLoading(true);
     setError('');
     try {
-      const url = new URL('/api/businesses/', window.location.origin);
+      const apiOrigin = getApiBase() || window.location.origin;
+      const url = new URL('/api/businesses/', apiOrigin);
       url.searchParams.set('near', `${center.lat.toFixed(6)},${center.lng.toFixed(6)}`);
       url.searchParams.set('radius_km', String(toKm(radiusMi)));
       url.searchParams.set('limit', '200');
@@ -1334,7 +1335,8 @@ function ResultsMap({
     async (lngLat) => {
       if (!followMapCenter || !lngLat) return;
       try {
-        const url = new URL('/api/businesses/', window.location.origin);
+        const apiOrigin = getApiBase() || window.location.origin;
+        const url = new URL('/api/businesses/', apiOrigin);
         url.searchParams.set('near', `${lngLat.lat.toFixed(6)},${lngLat.lng.toFixed(6)}`);
         url.searchParams.set('radius_km', String(toKm(radiusMi)));
         url.searchParams.set('limit', '200');
