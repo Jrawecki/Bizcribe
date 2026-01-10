@@ -32,7 +32,7 @@ export default function About() {
           Bizcribe is built to help people discover the small businesses that shape their communities.
         </h1>
         <p className="text-lg text-white/80 leading-relaxed max-w-3xl">
-          Through an interactive map, you can explore local shops, services, and unique experiences around you—making it easier
+          Through an interactive map, you can explore local shops, services, and unique experiences around you-making it easier
           than ever to support the businesses in your own neighborhood. For owners, Bizcribe is a simple way to increase
           visibility and connect with nearby customers by sharing what makes you stand out.
         </p>
@@ -55,7 +55,7 @@ export default function About() {
         <h2 className="text-xl font-semibold text-[var(--ceramic,white)]">Our mission</h2>
         <p className="text-white/80 leading-relaxed">
           We aim to bridge the gap between local businesses and the communities they serve. By making discovery effortless and
-          empowering entrepreneurs with modern digital tools, we want to strengthen local economies—one business at a time.
+          empowering entrepreneurs with modern digital tools, we want to strengthen local economies-one business at a time.
         </p>
       </section>
 

@@ -1,6 +1,6 @@
-# Bizscribe – Quickstart Guide
+# Bizscribe - Quickstart Guide
 
-Welcome! This guide is for new contributors or teammates who just cloned the Bizscribe repository and want to get everything running fast. It walks through the full stack, highlights the secrets you need, and covers the common commands you’ll run day-to-day.
+Welcome! This guide is for new contributors or teammates who just cloned the Bizscribe repository and want to get everything running fast. It walks through the full stack, highlights the secrets you need, and covers the common commands you'll run day-to-day.
 
 ---
 
@@ -8,9 +8,9 @@ Welcome! This guide is for new contributors or teammates who just cloned the Biz
 
 ```
 Bizscribe/
-├─ backend/              # FastAPI app (auth, business CRUD, AI demo, etc.)
-├─ frontend/             # React + Vite client
-├─ README.md             # Original project notes
+|-- backend/              # FastAPI app (auth, business CRUD, AI demo, etc.)
+|-- frontend/             # React + Vite client
+|-- README.md             # Original project notes
 ```
 
 ### Backend Highlights
@@ -35,9 +35,15 @@ To boot the stack you **must** obtain a few files that are excluded from Git:
 | Backend database | `backend/Bizscribe.db` (or your own DB) | Default SQLite file with seed data. Place it in `backend/` unless you configure a different database. |
 | Frontend runtime | `frontend/.env` | At minimum must define `VITE_MAPBOX_TOKEN=...` so the map can load. |
 
-> 🚫 These files are not in Git history. Ask an existing maintainer (or the repo owner) for the latest copies, or create your own `.env`/database from scratch if you’re setting up a brand new environment.
+> NOTE: These files are not in Git history. Ask an existing maintainer (or the repo owner) for the latest copies, or create your own `.env`/database from scratch if you're setting up a brand new environment.
 
-If you’re wiring Bizscribe into Postgres or another database, update `backend/.env` with a valid `DATABASE_URL`. The models auto-migrate on startup, but you’ll need to seed the data yourself.
+If you're wiring Bizscribe into Postgres or another database, update `backend/.env` with a valid `DATABASE_URL`. The models auto-migrate on startup, but you'll need to seed the data yourself.
+
+### Database (Postgres-first)
+- Local development uses Postgres at `DATABASE_URL_LOCAL`; keep `APP_ENV=local` so the API never points at Render by accident.
+- Deployments (Render) use `DATABASE_URL` with `APP_ENV=prod`.
+- SQLite/Bizscribe.db is no longer used; remove or ignore any old copies.
+- Run migrations with `alembic upgrade head` after your local Postgres is running.
 
 ---
 
@@ -46,7 +52,7 @@ If you’re wiring Bizscribe into Postgres or another database, update `backend/
 - **Python** 3.11+
 - **Node.js** 18+ (or any Node LTS that Vite supports)
 - **Git** (for source control)
-- **Mapbox account/token** for the frontend if you don’t have one already
+- **Mapbox account/token** for the frontend if you don't have one already
 
 
 ---
@@ -120,7 +126,7 @@ MAPBOX_TOKEN=pk.<change_me_three>
 VITE_MAPBOX_TOKEN=pk.YourRealTokenHere
 ```
 
-> ❗️Keep secrets out of Git. Add new sensitive entries to `.gitignore` if needed.
+> IMPORTANT: Keep secrets out of Git. Add new sensitive entries to `.gitignore` if needed.
 
 ---
 
@@ -142,4 +148,4 @@ VITE_MAPBOX_TOKEN=pk.YourRealTokenHere
 - Dive into `backend/app/routers/` to add new API endpoints or extend business workflows.
 - Update this README.md as the onboarding flow evolves.
 
-Happy building! 🚀 If you hit issues, open an issue or reach out to the maintainers. Keeping this guide accurate is a team effort—please submit improvements as you discover smoother workflows.
+Happy building! If you hit issues, open an issue or reach out to the maintainers. Keeping this guide accurate is a team effort - please submit improvements as you discover smoother workflows.

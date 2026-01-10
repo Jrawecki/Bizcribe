@@ -91,3 +91,73 @@ class BusinessVetting(BaseModel):
 
 
 BusinessSubmission.model_rebuild()
+
+
+class ImportItem(BaseModel):
+    id: int
+    batch_id: int
+    status: str
+    error_message: str | None = None
+    name: str
+    description: str | None = None
+    phone_number: str | None = None
+    location: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    address1: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip: str | None = None
+    duplicate_of_business_id: int | None = None
+    approved_business_id: int | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class ImportBatch(BaseModel):
+    id: int
+    created_at: datetime
+    created_by_id: int
+    source_name: str | None = None
+    source_url: str | None = None
+    total_rows: int
+
+    class Config:
+        from_attributes = True
+
+
+class ImportBatchDetail(ImportBatch):
+    items: List[ImportItem]
+
+
+class ImportBatchSummary(BaseModel):
+    batch: ImportBatch
+    ready: int
+    needs_geocode: int
+    needs_fix: int
+    duplicate_pending: int
+    approved: int
+    rejected: int
+    merged: int
+
+
+class ImportApproveRequest(BaseModel):
+    item_ids: List[int]
+
+
+class ImportItemUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    phone_number: str | None = None
+    location: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    address1: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip: str | None = None
+
+
+class ImportItemMergeRequest(BaseModel):
+    target_business_id: int

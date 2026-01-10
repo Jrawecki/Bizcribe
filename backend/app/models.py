@@ -82,3 +82,54 @@ class BusinessVetting(Base):
     submission = relationship("BusinessSubmission", back_populates="vetting", foreign_keys=[submission_id])
     business = relationship("Business", foreign_keys=[business_id])
     user = relationship("User", foreign_keys=[user_id])
+
+
+class ImportItemStatus(str, Enum):
+    READY = "READY"
+    NEEDS_GEOCODE = "NEEDS_GEOCODE"
+    NEEDS_FIX = "NEEDS_FIX"
+    DUPLICATE_PENDING = "DUPLICATE_PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    MERGED = "MERGED"
+
+
+class ImportBatch(Base):
+    __tablename__ = "import_batches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    source_name = Column(String, nullable=True)
+    source_url = Column(String, nullable=True)
+    total_rows = Column(Integer, default=0, nullable=False)
+
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    items = relationship("ImportItem", back_populates="batch", cascade="all,delete-orphan")
+
+
+class ImportItem(Base):
+    __tablename__ = "import_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    batch_id = Column(Integer, ForeignKey("import_batches.id"), nullable=False, index=True)
+    status = Column(String, default=ImportItemStatus.NEEDS_GEOCODE.value, nullable=False, index=True)
+    error_message = Column(String, nullable=True)
+
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    lat = Column(Float, nullable=True)
+    lng = Column(Float, nullable=True)
+    address1 = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    zip = Column(String, nullable=True)
+
+    duplicate_of_business_id = Column(Integer, ForeignKey("businesses.id"), nullable=True)
+    approved_business_id = Column(Integer, ForeignKey("businesses.id"), nullable=True)
+
+    batch = relationship("ImportBatch", back_populates="items", foreign_keys=[batch_id])
+    duplicate_of = relationship("Business", foreign_keys=[duplicate_of_business_id])
+    approved_business = relationship("Business", foreign_keys=[approved_business_id])

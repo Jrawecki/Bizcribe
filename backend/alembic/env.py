@@ -1,7 +1,6 @@
 from logging.config import fileConfig
 
 import os
-from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
@@ -17,13 +16,35 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from app.database import Base  # noqa: E402
+from app.database import Base, get_database_url  # noqa: E402
+from app import models, models_user  # noqa: F401,E402
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def _database_url():
+    """Use the same resolution logic as the app; fall back to alembic.ini if needed."""
+    try:
+        return get_database_url()
+    except RuntimeError:
+        app_env = os.getenv("APP_ENV", "local").lower()
+        if app_env in {"prod", "production", "render", "deploy", "preview"}:
+            url = os.environ.get("DATABASE_URL")
+        else:
+            url = os.environ.get("DATABASE_URL_LOCAL")
+
+        if not url:
+            url = config.get_main_option("sqlalchemy.url")
+
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        if not url:
+            raise RuntimeError("Set DATABASE_URL_LOCAL for dev or DATABASE_URL for prod before running Alembic.")
+        return url
 
 
 def run_migrations_offline() -> None:
@@ -38,7 +59,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+    url = _database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -57,9 +78,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql://", 1)
+    url = _database_url()
 
     config_dict = config.get_section(config.config_ini_section, {}) or {}
     config_dict["sqlalchemy.url"] = url

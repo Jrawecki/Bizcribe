@@ -1,4 +1,4 @@
-﻿// frontend/src/App.jsx
+// frontend/src/App.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom';
@@ -15,6 +15,7 @@ import Login from './auth/Login.jsx';
 // Unified register page uses the RegisterBusiness page
 import { useAuth } from './auth/AuthContext.jsx';
 import AdminSubmissions from './pages/Admin/Submissions.jsx';
+import AdminImports from './pages/Admin/Imports.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 
@@ -161,9 +162,14 @@ function Header() {
                       My Submissions
                     </Link>
                     {user?.role === 'ADMIN' && (
-                      <Link to="/admin/submissions" className="header-menu__link" onClick={closeMenu}>
-                        Admin
-                      </Link>
+                      <>
+                        <Link to="/admin/submissions" className="header-menu__link" onClick={closeMenu}>
+                          Admin
+                        </Link>
+                        <Link to="/admin/imports" className="header-menu__link" onClick={closeMenu}>
+                          Imports
+                        </Link>
+                      </>
                     )}
                     <button
                       type="button"
@@ -215,6 +221,7 @@ export default function App() {
             <Route path="/register-only" element={<SignupOnly />} />
             <Route path="/register-business" element={<Signup />} />
             <Route path="/admin/submissions" element={<AdminSubmissions />} />
+            <Route path="/admin/imports" element={<AdminImports />} />
           </Routes>
         </main>
       </div>

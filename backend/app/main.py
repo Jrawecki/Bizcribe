@@ -12,6 +12,7 @@ from . import models_user            # User, memberships, reviews, etc.
 # Routers
 from .routers import businesses
 from .routers import business_submissions
+from .routers import imports
 from .routers.auth import router as auth_router
 
 # Create tables (idempotent)
@@ -46,6 +47,7 @@ app.add_middleware(
 app.include_router(auth_router)                 # /api/auth/*
 app.include_router(business_submissions.router) # /api/businesses/submissions
 app.include_router(businesses.router)           # /api/businesses
+app.include_router(imports.router)              # /api/imports
 
 
 @app.get("/health")

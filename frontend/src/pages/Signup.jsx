@@ -279,7 +279,7 @@ export default function Signup() {
                   onClick={() => setVetGroupOpen((prev) => ({ ...prev, [groupId]: !open }))}
                 >
                   {group.label}
-                  <span className="text-xs text-white/60">{open ? '−' : '+'}</span>
+                  <span className="text-xs text-white/60">{open ? '-' : '+'}</span>
                 </button>
                 {open && (
                   <div className="py-2 px-3 space-y-1">
@@ -316,7 +316,7 @@ export default function Signup() {
                     onClick={() => toggleMulti(field.id, opt)}
                     aria-label={`Remove ${opt}`}
                   >
-                    ×
+                    x
                   </button>
                 </span>
               ))}

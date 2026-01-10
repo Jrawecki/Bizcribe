@@ -210,7 +210,7 @@ export default function AdminSubmissions() {
               <div className="p-4"><StateMessage variant="loading">Loading...</StateMessage></div>
             ) : (
               <div className="modal-scroll pr-1">
-                <div className="mb-3 text-sm opacity-80">ID #{selected.id} · Owner: {selected.owner?.email || selected.owner_id}</div>
+                <div className="mb-3 text-sm opacity-80">ID #{selected.id} - Owner: {selected.owner?.email || selected.owner_id}</div>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div><label className="text-xs opacity-75">Name</label><div>{selected.name}</div></div>
                   <div><label className="text-xs opacity-75">Phone</label><div>{selected.phone_number || '-'}</div></div>

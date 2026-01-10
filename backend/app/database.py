@@ -6,35 +6,60 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
-import pathlib
 
 load_dotenv()  # Load environment variables from .env file
 
-# Base directory = backend folder
-BASE_DIR = pathlib.Path(__file__).resolve().parent.parent
-DEFAULT_SQLITE_PATH = BASE_DIR / "Bizcribe.db"
 
-# Use env var if set, otherwise fall back to Bizcribe.db (SQLite)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    # SQLAlchemy requires three slashes for a relative sqlite file
-    f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}",
-)
+def _is_prod_env() -> bool:
+    """Detect if we should use the production/Render database."""
+    return os.getenv("APP_ENV", "local").lower() in {"prod", "production", "render", "deploy", "preview"}
 
-# Normalize postgres scheme (Render often supplies postgres://)
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Engine config: require SSL for Postgres (Render external URL) and allow sqlite check_same_thread
-if DATABASE_URL.lower().startswith("sqlite:///"):
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-elif DATABASE_URL.lower().startswith("postgresql://"):
-    engine = create_engine(DATABASE_URL, connect_args={"sslmode": "require"}, pool_pre_ping=True)
-else:
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+def get_database_url() -> str:
+    """
+    Resolve the active database URL.
+    - Local/dev: DATABASE_URL_LOCAL
+    - Prod/Render: DATABASE_URL
+    """
+    url = os.getenv("DATABASE_URL") if _is_prod_env() else os.getenv("DATABASE_URL_LOCAL")
+    if not url:
+        raise RuntimeError("Set DATABASE_URL_LOCAL for local dev or DATABASE_URL for production (set APP_ENV=prod).")
+
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+
+    if not url.lower().startswith("postgresql://"):
+        raise RuntimeError("Only PostgreSQL URLs are supported. Update DATABASE_URL/DATABASE_URL_LOCAL.")
+
+    return url
+
+
+def _require_ssl(url: str) -> bool:
+    """
+    Decide whether to enforce SSL.
+    Default: require in prod/Render; optional locally unless DATABASE_REQUIRE_SSL is set.
+    """
+    override = os.getenv("DATABASE_REQUIRE_SSL")
+    if override is not None:
+        return override.lower() in {"1", "true", "yes", "require"}
+
+    return _is_prod_env() or "render.com" in url
+
+
+def build_engine(url: str):
+    connect_args = {}
+    if _require_ssl(url):
+        connect_args["sslmode"] = os.getenv("DATABASE_SSLMODE", "require")
+
+    return create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+
+
+DATABASE_URL = get_database_url()
+engine = build_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
 
 def get_db():
     """
