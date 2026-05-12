@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { fetchJson } from '../../utils/apiClient.js';
 import StateMessage from '../../components/StateMessage.jsx';
+import AdminTabs from './AdminTabs.jsx';
 
 const STATUS_OPTIONS = ['PENDING', 'APPROVED', 'REJECTED'];
 
@@ -118,6 +119,7 @@ export default function AdminSubmissions() {
 
   return (
     <div className="p-6">
+      <AdminTabs />
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Business Submissions</h2>
         <div className="text-sm opacity-80">Total: {total}</div>
@@ -148,10 +150,10 @@ export default function AdminSubmissions() {
         </div>
       )}
 
-      <div className="overflow-auto border border-[#2a2d30] rounded-lg">
+      <div className="overflow-auto border border-[var(--border)] rounded-lg">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-[#101113]">
+            <tr className="bg-[var(--bg-alt)]">
               <th className="text-left p-3">Name</th>
               <th className="text-left p-3">City</th>
               <th className="text-left p-3">State</th>
@@ -168,7 +170,7 @@ export default function AdminSubmissions() {
               <tr><td className="p-4" colSpan={7}><StateMessage>No submissions found.</StateMessage></td></tr>
             ) : (
               items.map((s) => (
-                <tr key={s.id} className="border-t border-[#2a2d30]">
+                <tr key={s.id} className="border-t border-[var(--border)]">
                   <td className="p-3">{s.name}</td>
                   <td className="p-3">{s.city || '-'}</td>
                   <td className="p-3">{s.state || '-'}</td>
@@ -224,7 +226,7 @@ export default function AdminSubmissions() {
                     <h4 className="text-sm font-semibold mb-2">Vetting responses</h4>
                     <div className="space-y-2 text-sm">
                       {Object.entries(selected.vetting.answers).map(([key, val]) => (
-                        <div key={key} className="border border-[#2a2d30] rounded-lg p-2">
+                        <div key={key} className="border border-[var(--border)] rounded-lg p-2">
                           <div className="text-xs uppercase tracking-wide opacity-60">{key}</div>
                           <div className="mt-1">
                             {Array.isArray(val) ? (val.length ? val.join(', ') : '-') : (val || '-')}

@@ -74,7 +74,7 @@ export default function SignupOnly() {
         </form>
 
         <div className="text-sm mt-4 text-center">
-          Want to register a business? <Link to="/register-business" className="underline">Go here</Link>
+          Want to register a business? <Link to="/register-business" className="underline" style={{ color: 'var(--ceramic)' }}>Go here</Link>
         </div>
       </div>
     </div>

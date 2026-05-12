@@ -39,10 +39,10 @@ export default function MySubmissions() {
           <StateMessage variant="error">{error}</StateMessage>
         </div>
       )}
-      <div className="overflow-auto border border-[#2a2d30] rounded-lg">
+      <div className="overflow-auto border border-[var(--border)] rounded-lg">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="bg-[#101113]">
+            <tr className="bg-[var(--bg-alt)]">
               <th className="text-left p-3">Name</th>
               <th className="text-left p-3">City</th>
               <th className="text-left p-3">State</th>
@@ -58,7 +58,7 @@ export default function MySubmissions() {
               <tr><td className="p-4" colSpan={6}><StateMessage>No submissions yet.</StateMessage></td></tr>
             ) : (
               items.map((s) => (
-                <tr key={s.id} className="border-t border-[#2a2d30]">
+                <tr key={s.id} className="border-t border-[var(--border)]">
                   <td className="p-3">{s.name}</td>
                   <td className="p-3">{s.city || '-'}</td>
                   <td className="p-3">{s.state || '-'}</td>

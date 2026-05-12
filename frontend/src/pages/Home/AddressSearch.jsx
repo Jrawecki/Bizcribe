@@ -24,7 +24,7 @@ export default function AddressSearch({ state, actions, onPick, hideLabel = fals
         className="w-full p-3 rounded-lg h-12"
       />
       {open && list.length > 0 && (
-        <ul className="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-lg border border-[#2a2d30] bg-[#0f1012] shadow">
+        <ul className="absolute z-20 mt-1 w-full max-h-60 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg-panel)] shadow">
           {list.map((s, idx) => (
             <li
               key={`${s.label}-${idx}`}
@@ -32,7 +32,7 @@ export default function AddressSearch({ state, actions, onPick, hideLabel = fals
                 actions.lock();
                 onPick(s);
               }}
-              className="px-3 py-2 cursor-pointer hover:bg-[#131417]"
+              className="px-3 py-2 cursor-pointer hover:bg-[var(--bg-alt)]"
             >
               {s.label}
             </li>

@@ -6,16 +6,16 @@
    Theme Tokens
 ===================================================== */
 :root {
-  --bg: #090b12;
-  --bg-alt: #0e111a;
-  --bg-panel: #131720;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --text: #f5f7fb;
-  --text-muted: #a7afc6;
-  --blue: #3b5f7c;
-  --blue-soft: #2e4558;
-  --ceramic: #d8ae70;
+  --bg: #fdf2e9;
+  --bg-alt: #fff7ee;
+  --bg-panel: #ffffff;
+  --border: rgba(15, 15, 15, 0.08);
+  --border-strong: rgba(15, 15, 15, 0.16);
+  --text: #0a0a0a;
+  --text-muted: #5b5b5b;
+  --blue: #ea580c;
+  --blue-soft: #c2410c;
+  --ceramic: #ea580c;
   --home-row-height: clamp(520px, 68vh, 620px);
   --home-map-height: var(--home-row-height);
   --home-results-height: var(--home-row-height);
@@ -80,7 +80,7 @@ a:hover {
 ===================================================== */
 .chip {
   background: var(--blue-soft);
-  color: var(--text);
+  color: #ffffff;
   border-radius: 9999px;
   padding: 4px 10px;
 }
@@ -109,7 +109,7 @@ a:hover {
 
 .btn-primary {
   background: var(--blue);
-  color: var(--text);
+  color: #ffffff;
 }
 
 .btn-primary:hover {
@@ -125,7 +125,7 @@ a:hover {
 
 .btn-ghost:hover {
   border-color: var(--border-strong);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 input,
@@ -146,14 +146,14 @@ textarea::placeholder {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   color: var(--text);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
 }
 
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   color: var(--text);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08);
 }
 
 .segmented {
@@ -178,6 +178,7 @@ textarea::placeholder {
 
 .segmented .seg.active {
   background: var(--blue);
+  color: #ffffff;
   opacity: 1;
 }
 
@@ -316,7 +317,7 @@ textarea::placeholder {
   padding: 8px 18px;
   border-radius: 999px;
   background: var(--blue);
-  color: var(--text);
+  color: #ffffff;
   border: 1px solid transparent;
   transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
 }
@@ -324,13 +325,118 @@ textarea::placeholder {
 .nav-pill--cta:hover,
 .nav-pill--cta:focus-visible {
   filter: brightness(1.08);
-  color: var(--text);
-  box-shadow: 0 8px 24px rgba(12, 16, 30, 0.45);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(234, 88, 12, 0.35);
 }
 
 .nav-pill--cta.active {
   text-decoration: none;
-  box-shadow: 0 10px 26px rgba(12, 16, 30, 0.55);
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(234, 88, 12, 0.4);
+}
+
+.account-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.account-dropdown__trigger {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  user-select: none;
+}
+
+.account-dropdown:hover .account-dropdown__trigger,
+.account-dropdown:focus-within .account-dropdown__trigger {
+  background: var(--blue);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(234, 88, 12, 0.35);
+}
+
+.account-dropdown__panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: none;
+  border-radius: 20px;
+  box-shadow:
+    0 1px 2px rgba(15, 15, 15, 0.04),
+    0 8px 24px rgba(15, 15, 15, 0.06),
+    0 24px 56px rgba(15, 15, 15, 0.08);
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 160ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.account-dropdown__panel::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+
+.account-dropdown__panel::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 22px;
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  transform: rotate(45deg);
+  border-top-left-radius: 2px;
+  box-shadow: -1px -1px 1px rgba(15, 15, 15, 0.04);
+}
+
+.account-dropdown:hover .account-dropdown__panel,
+.account-dropdown:focus-within .account-dropdown__panel {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.account-dropdown__link {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  transition: background 160ms cubic-bezier(0.16, 1, 0.3, 1),
+              color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+              transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.account-dropdown__link + .account-dropdown__link {
+  margin-top: 2px;
+}
+
+.account-dropdown__link:hover,
+.account-dropdown__link:focus-visible {
+  background: rgba(234, 88, 12, 0.1);
+  color: var(--blue-soft);
+  transform: translateX(2px);
+  outline: none;
 }
 
 .menu-trigger {
@@ -340,8 +446,8 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(15, 15, 15, 0.12);
+  background: rgba(15, 15, 15, 0.05);
   color: var(--text);
   cursor: pointer;
   transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
@@ -349,8 +455,8 @@ textarea::placeholder {
 
 .menu-trigger:hover,
 .menu-trigger:focus-visible {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(15, 15, 15, 0.08);
+  border-color: rgba(15, 15, 15, 0.2);
   outline: none;
 }
 
@@ -359,13 +465,12 @@ textarea::placeholder {
   width: auto;
   max-width: 280px;
   padding: 0.75rem 0.85rem;
-  background: rgba(13, 16, 24, 0.96) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+  background: var(--bg-panel) !important;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.12);
   color: var(--text) !important;
   transform: translate(calc(-100% - 12px), 0);
   border-radius: 16px;
-  backdrop-filter: blur(10px);
 }
 
 .header-menu__panel:focus-visible {
@@ -385,20 +490,20 @@ textarea::placeholder {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin: 0 0 0.15rem 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(15, 15, 15, 0.55);
 }
 
 .header-menu__identity {
   display: block;
   width: 100%;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--text);
   margin: 0.35rem 0 0.3rem;
   line-height: 1.4;
   padding: 8px 10px;
   border-radius: 12px;
-  background: rgba(59, 95, 124, 0.18);
-  border: 1px solid rgba(59, 95, 124, 0.28);
+  background: rgba(234, 88, 12, 0.08);
+  border: 1px solid rgba(234, 88, 12, 0.22);
 }
 
 .header-menu__identity strong {
@@ -425,15 +530,15 @@ textarea::placeholder {
 .header-menu__link:hover,
 .header-menu__link:focus-visible {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: rgba(234, 88, 12, 0.08);
+  color: var(--blue-soft);
   outline: none;
 }
 
 .header-menu__divider {
   height: 1px;
   margin: 0.2rem 0.4rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--border);
 }
 
 /* =====================================================
@@ -580,7 +685,7 @@ textarea::placeholder {
   min-height: 0;
   border-radius: 18px;
   overflow: hidden;
-  background: #0f1012;
+  background: var(--bg-alt);
 }
 
 .map-canvas__inner {
@@ -687,15 +792,14 @@ textarea::placeholder {
    Dropdowns & Menus
 ===================================================== */
 .dropdown-panel {
-  background: rgba(13, 16, 24, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   border-radius: 18px;
-  box-shadow: 0 18px 42px rgba(8, 12, 18, 0.45);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.12);
   padding: 14px;
   max-height: 420px;
   overflow: hidden;
   min-width: 220px;
-  backdrop-filter: blur(10px);
 }
 
 .dropdown-panel--overlay {
@@ -747,7 +851,7 @@ textarea::placeholder {
 .dropdown-item:hover,
 .dropdown-link:hover,
 .dropdown-link:focus-visible {
-  background: rgba(59, 95, 124, 0.2);
+  background: rgba(234, 88, 12, 0.1);
   outline: none;
 }
 
@@ -776,7 +880,7 @@ textarea::placeholder {
   gap: 0.5rem;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(15, 15, 15, 0.05);
   border: 1px solid transparent;
   font-weight: 600;
   font-size: 0.9rem;
@@ -784,7 +888,7 @@ textarea::placeholder {
 }
 
 .user-trigger:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 15, 0.08);
 }
 
 .user-trigger__name {
@@ -800,7 +904,7 @@ textarea::placeholder {
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 5px solid rgba(255, 255, 255, 0.65);
+  border-top: 5px solid rgba(15, 15, 15, 0.55);
   margin-top: 2px;
 }
 
@@ -810,13 +914,13 @@ textarea::placeholder {
   gap: 0.4rem;
   padding: 10px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 15, 0.04);
+  border: 1px solid var(--border);
   color: var(--text);
 }
 
 .text-trigger:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 15, 0.06);
 }
 
 /* =====================================================
@@ -837,7 +941,7 @@ textarea::placeholder {
   appearance: none;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 15, 0.1);
   outline: none;
 }
 
@@ -847,7 +951,7 @@ textarea::placeholder {
   height: 16px;
   border-radius: 50%;
   background: var(--ceramic);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid #ffffff;
   cursor: pointer;
   transition: transform 120ms ease;
 }
@@ -861,7 +965,7 @@ textarea::placeholder {
   height: 16px;
   border-radius: 50%;
   background: var(--ceramic);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid #ffffff;
   cursor: pointer;
 }
 
@@ -889,12 +993,12 @@ textarea::placeholder {
 
 .peek-card {
   scroll-snap-align: start;
-  background: rgba(24, 29, 39, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   border-radius: 18px;
   padding: 14px;
   min-width: min(78vw, 360px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
   transition: border-color 120ms ease, transform 120ms ease;
 }
 
@@ -1180,6 +1284,11 @@ textarea::placeholder {
   display: none !important;
 }
 
+/* Darken roads/labels on light raster tiles (Carto Positron) without dimming the white land */
+.leaflet-container .leaflet-tile-pane {
+  filter: contrast(1.45) brightness(0.97);
+}
+
 .leaflet-container .leaflet-bar a,
 .leaflet-container .leaflet-control-zoom a {
   background: rgba(0, 0, 0, 0.35) !important;
@@ -1404,10 +1513,10 @@ textarea::placeholder {
 }
 
 .map-biz-sheet__cluster-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 12px;
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .map-biz-sheet__image {

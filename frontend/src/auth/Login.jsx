@@ -58,8 +58,15 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
-        <div className="text-sm mt-4 text-center">
-          Don't have an account? <Link to="/register" className="underline">Create one</Link>
+        <div className="text-sm mt-4 text-center space-y-2">
+          <div>
+            Don't have an account?{' '}
+            <Link to="/register" className="underline" style={{ color: 'var(--ceramic)' }}>Sign up</Link>
+          </div>
+          <div>
+            Register a business?{' '}
+            <Link to="/register-business" className="underline" style={{ color: 'var(--ceramic)' }}>Go here</Link>
+          </div>
         </div>
       </div>
     </div>

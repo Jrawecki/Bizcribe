@@ -1,5 +1,6 @@
 # backend/app/schemas_auth.py
-from typing import Optional
+from datetime import datetime
+from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field
 from .models_user import UserRole
 from .schemas import SmallBusinessCreate
@@ -38,3 +39,21 @@ class TokenPair(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class AdminUserListItem(BaseModel):
+    id: int
+    email: EmailStr
+    display_name: Optional[str] = None
+    role: UserRole
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdminUserListResponse(BaseModel):
+    items: List[AdminUserListItem]
+    total: int
+    skip: int
+    limit: int

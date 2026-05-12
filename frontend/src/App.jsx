@@ -16,6 +16,7 @@ import Login from './auth/Login.jsx';
 import { useAuth } from './auth/AuthContext.jsx';
 import AdminSubmissions from './pages/Admin/Submissions.jsx';
 import AdminImports from './pages/Admin/Imports.jsx';
+import AdminCustomers from './pages/Admin/Customers.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 
@@ -28,7 +29,6 @@ function Header() {
   const [menuRect, setMenuRect] = useState(null);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const primaryNavLinks = [
-    { to: '/register-business', label: 'Add Business', className: 'nav-pill--cta' },
     { to: '/about', label: 'About' },
     { to: '/contact', label: 'Contact' },
   ];
@@ -94,6 +94,14 @@ function Header() {
         </Link>
 
         <nav className={`header-nav${navCollapsed ? ' header-nav--hidden' : ''}`}>
+          <div className="account-dropdown" tabIndex={0}>
+            <span className="account-dropdown__trigger">Account</span>
+            <div className="account-dropdown__panel">
+              <Link to="/login" className="account-dropdown__link" onClick={closeMenu}>Sign in</Link>
+              <Link to="/register" className="account-dropdown__link" onClick={closeMenu}>Sign up</Link>
+              <Link to="/register-business" className="account-dropdown__link" onClick={closeMenu}>Add your business</Link>
+            </div>
+          </div>
           {primaryNavLinks.map(({ to, label, className: extraClass = '' }) => (
             <NavLink
               key={to}
@@ -132,8 +140,11 @@ function Header() {
               }
             >
               <div className="header-menu__group">
+                <Link to="/register" className="header-menu__link" onClick={closeMenu}>
+                  Sign up
+                </Link>
                 <Link to="/register-business" className="header-menu__link" onClick={closeMenu}>
-                  Add Business
+                  Add your business
                 </Link>
                 <Link to="/garage-sale" className="header-menu__link" onClick={closeMenu}>
                   Garage Sale
@@ -163,7 +174,7 @@ function Header() {
                     </Link>
                     {user?.role === 'ADMIN' && (
                       <>
-                        <Link to="/admin/submissions" className="header-menu__link" onClick={closeMenu}>
+                        <Link to="/admin/businesses" className="header-menu__link" onClick={closeMenu}>
                           Admin
                         </Link>
                         <Link to="/admin/imports" className="header-menu__link" onClick={closeMenu}>
@@ -217,10 +228,10 @@ export default function App() {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Signup />} />
-            <Route path="/register-only" element={<SignupOnly />} />
+            <Route path="/register" element={<SignupOnly />} />
             <Route path="/register-business" element={<Signup />} />
-            <Route path="/admin/submissions" element={<AdminSubmissions />} />
+            <Route path="/admin/businesses" element={<AdminSubmissions />} />
+            <Route path="/admin/customers" element={<AdminCustomers />} />
             <Route path="/admin/imports" element={<AdminImports />} />
           </Routes>
         </main>

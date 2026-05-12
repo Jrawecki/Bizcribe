@@ -73,7 +73,7 @@ export default function MiniMap({ value, onChange, pinEnabled = false }) {
         </button>
       </div>
 
-      <div className="w-full h-80 lg:h-full min-h-80 rounded-lg overflow-hidden relative bg-[#0f1012] mini-map__canvas">
+      <div className="w-full h-80 lg:h-full min-h-80 rounded-lg overflow-hidden relative bg-[var(--bg-alt)] mini-map__canvas">
         {!mapboxFailed && MAPBOX_ENABLED ? (
           <MapboxMiniMap
             value={value}

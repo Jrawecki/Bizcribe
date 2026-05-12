@@ -20,6 +20,7 @@ def get_database_url() -> str:
     Resolve the active database URL.
     - Local/dev: DATABASE_URL_LOCAL
     - Prod/Render: DATABASE_URL
+    Accepts PostgreSQL or SQLite URLs.
     """
     url = os.getenv("DATABASE_URL") if _is_prod_env() else os.getenv("DATABASE_URL_LOCAL")
     if not url:
@@ -28,8 +29,9 @@ def get_database_url() -> str:
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
 
-    if not url.lower().startswith("postgresql://"):
-        raise RuntimeError("Only PostgreSQL URLs are supported. Update DATABASE_URL/DATABASE_URL_LOCAL.")
+    lowered = url.lower()
+    if not (lowered.startswith("postgresql://") or lowered.startswith("sqlite:")):
+        raise RuntimeError("Only PostgreSQL or SQLite URLs are supported. Update DATABASE_URL/DATABASE_URL_LOCAL.")
 
     return url
 
@@ -48,7 +50,10 @@ def _require_ssl(url: str) -> bool:
 
 def build_engine(url: str):
     connect_args = {}
-    if _require_ssl(url):
+    is_sqlite = url.lower().startswith("sqlite:")
+    if is_sqlite:
+        connect_args["check_same_thread"] = False
+    elif _require_ssl(url):
         connect_args["sslmode"] = os.getenv("DATABASE_SSLMODE", "require")
 
     return create_engine(url, connect_args=connect_args, pool_pre_ping=True)

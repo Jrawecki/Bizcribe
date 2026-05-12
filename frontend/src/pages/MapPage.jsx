@@ -462,7 +462,7 @@ export default function MapPage() {
                 {businesses.slice(0, 100).map((b) => (
                   <li
                     key={b.id}
-                    className="p-2 rounded-lg hover:bg-[#101113] cursor-pointer"
+                    className="p-2 rounded-lg hover:bg-[var(--bg-alt)] cursor-pointer"
                     onClick={() => handleBusinessFocus(b)}
                   >
                     <div className="font-medium">{b.name}</div>

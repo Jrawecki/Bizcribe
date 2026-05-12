@@ -411,10 +411,10 @@ export default function AdminImports() {
                       )}
                     </div>
 
-                    <div className="overflow-auto border border-[#2a2d30] rounded-lg">
+                    <div className="overflow-auto border border-[var(--border)] rounded-lg">
                       <table className="min-w-full text-xs">
                         <thead>
-                          <tr className="bg-[#101113]">
+                          <tr className="bg-[var(--bg-alt)]">
                             <th className="p-2 text-left">
                               <input
                                 type="checkbox"
@@ -442,7 +442,7 @@ export default function AdminImports() {
                             items.map((item) => {
                               const edit = editing[item.id];
                               return (
-                                <tr key={item.id} className="border-t border-[#2a2d30] align-top">
+                                <tr key={item.id} className="border-t border-[var(--border)] align-top">
                                   <td className="p-2">
                                     <input
                                       type="checkbox"

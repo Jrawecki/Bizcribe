@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      host: '0.0.0.0',
+      host: '127.0.0.1',
       proxy: {
         '/api': {
           target: apiTarget,
@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
           secure: apiTarget.startsWith('https'),
         },
       },
-      allowedHosts: ['calentural-waisted-lennox.ngrok-free.dev'],
     },
   }
 })

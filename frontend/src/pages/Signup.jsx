@@ -641,7 +641,7 @@ export default function Signup() {
                 {!isAuthenticated && (
                   <button
                     type="button"
-                    onClick={() => nav('/register-only')}
+                    onClick={() => nav('/register')}
                     className="px-4 py-2 rounded-lg btn-ghost"
                   >
                     Just sign up

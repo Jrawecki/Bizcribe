@@ -10,6 +10,7 @@ from . import models                 # SmallBusiness
 from . import models_user            # User, memberships, reviews, etc.
 
 # Routers
+from .routers import admin
 from .routers import businesses
 from .routers import business_submissions
 from .routers import imports
@@ -48,6 +49,7 @@ app.include_router(auth_router)                 # /api/auth/*
 app.include_router(business_submissions.router) # /api/businesses/submissions
 app.include_router(businesses.router)           # /api/businesses
 app.include_router(imports.router)              # /api/imports
+app.include_router(admin.router)                # /api/admin/*
 
 
 @app.get("/health")

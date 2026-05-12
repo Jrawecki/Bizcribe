@@ -890,10 +890,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-stretch">
+            <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-stretch">
             <div
               ref={mapSectionRef}
-              className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-none h-full"
+              className="home-map-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-alt)]/70 relative overflow-hidden z-0 order-1 lg:order-2 h-full"
             >
               <ResultsMap
                 center={center}
@@ -1015,7 +1015,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="home-results-panel home-results-panel--desktop rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 hidden lg:flex flex-col relative z-10 order-3 lg:order-none h-full">
+              <div className="home-results-panel home-results-panel--desktop rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 hidden lg:flex flex-col relative z-10 order-3 lg:order-1 h-full">
                 <header className="mb-4 flex items-center justify-between gap-3">
                   <h2 className="text-lg font-semibold">Nearby businesses</h2>
                 </header>

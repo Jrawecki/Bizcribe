@@ -1,10 +1,10 @@
 import L from 'leaflet';
 
 export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-export const MAPBOX_DEFAULT_STYLE = 'mapbox/streets-v12';
+export const MAPBOX_DEFAULT_STYLE = 'mapbox/light-v11';
 
 export const MAPBOX_STYLES = {
-  Streets: 'mapbox/streets-v12',
+  Light: 'mapbox/light-v11',
 };
 
 export const MAPBOX_ENABLED = Boolean(MAPBOX_TOKEN);
@@ -43,11 +43,13 @@ export function mapboxTileProps(styleId = MAPBOX_DEFAULT_STYLE, token = MAPBOX_T
 
 export function osmTileProps() {
   return {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    subdomains: 'abcd',
     tileSize: 256,
     maxZoom: 19,
     detectRetina: true,
-    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
   };
 }
 
