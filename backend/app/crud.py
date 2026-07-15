@@ -8,20 +8,6 @@ from datetime import datetime
 import math
 
 
-def get_businesses(
-    db: Session,
-    skip: int = 0,
-    limit: int = 100,
-    *,
-    approved_only: bool = True,
-) -> List[models.Business]:
-    """List businesses with optional approval filtering and pagination."""
-    query = db.query(models.Business)
-    if approved_only:
-        query = query.filter(models.Business.is_approved.is_(True))
-    return query.offset(skip).limit(limit).all()
-
-
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Compute great-circle distance between two lat/lon pairs in kilometers."""
     R = 6371.0

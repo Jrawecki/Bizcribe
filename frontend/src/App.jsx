@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BrowserRouter, Routes, Route, NavLink, Link } from 'react-router-dom';
-import { ScrollText } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import Home from './pages/Home/Home.jsx';
 import MapPage from './pages/MapPage.jsx';
 import GarageSale from './pages/GarageSale.jsx';
@@ -48,8 +48,18 @@ function Header() {
         setMenuOpen(false);
       }
     };
+    const handleKey = (event) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [menuOpen]);
 
   useEffect(() => {
@@ -59,8 +69,8 @@ function Header() {
       if (!buttonEl) return;
       const rect = buttonEl.getBoundingClientRect();
       setMenuRect({
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX,
+        top: rect.bottom + window.scrollY + 10,
+        right: Math.max(window.innerWidth - rect.right, 12),
       });
     };
     updateRect();
@@ -93,6 +103,8 @@ function Header() {
           <span className="brand-mark__rest">izcribe</span>
         </Link>
 
+        <div id="header-search-slot" className="header-search-slot" />
+
         <nav className={`header-nav${navCollapsed ? ' header-nav--hidden' : ''}`}>
           <div className="account-dropdown" tabIndex={0}>
             <span className="account-dropdown__trigger">Account</span>
@@ -117,14 +129,16 @@ function Header() {
         <div className="header-menu">
           <button
             type="button"
-            className="menu-trigger"
+            className={`menu-trigger${menuOpen ? ' menu-trigger--open' : ''}`}
             ref={menuButtonRef}
-            aria-label="Open account menu"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
           >
-            <ScrollText aria-hidden="true" />
+            {menuOpen
+              ? <X aria-hidden="true" strokeWidth={2} />
+              : <Menu aria-hidden="true" strokeWidth={2} />}
           </button>
         </div>
 
@@ -133,16 +147,9 @@ function Header() {
             <div
               ref={menuPanelRef}
               className="dropdown-panel dropdown-panel--menu header-menu__panel"
-              style={
-                navCollapsed
-                  ? { top: menuRect.top + 8, right: 12, left: 'auto', width: 'auto', maxWidth: '260px' }
-                  : { top: menuRect.top, left: menuRect.left }
-              }
+              style={{ top: menuRect.top, right: menuRect.right, left: 'auto' }}
             >
               <div className="header-menu__group">
-                <Link to="/register" className="header-menu__link" onClick={closeMenu}>
-                  Sign up
-                </Link>
                 <Link to="/register-business" className="header-menu__link" onClick={closeMenu}>
                   Add your business
                 </Link>

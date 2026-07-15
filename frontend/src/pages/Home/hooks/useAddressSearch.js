@@ -153,6 +153,7 @@ export function useAddressSearch() {
           if (!results.length) {
             results = await fetchNominatimSuggestions(trimmed);
           }
+          if (lockedRef.current) return; // locked while fetch was in flight — discard stale results
           setList(results);
           setOpen(results.length > 0);
         } finally {

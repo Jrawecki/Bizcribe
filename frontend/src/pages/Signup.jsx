@@ -48,7 +48,6 @@ export default function Signup() {
   }, [form, account, vetAnswers, vetOther]);
 
   const addr = useAddressSearch();
-  const vetAddr = useAddressSearch();
 
   useEffect(() => {
     const onDown = (e) => {
@@ -248,10 +247,7 @@ export default function Signup() {
       case 'multiselect': {
         const selected = Array.isArray(vetAnswers[field.id]) ? vetAnswers[field.id] : [];
         const otherVal = vetOther[field.id] || '';
-        const allOptions = (field.groups || []).flatMap((g) => g.options || []);
-        const uniqueOptions = Array.from(new Set(allOptions));
         const searchVal = vetSearch[field.id] || '';
-        const filtered = (searchVal ? uniqueOptions.filter((opt) => opt.toLowerCase().includes(searchVal.toLowerCase())) : uniqueOptions);
         const isOpen = !!vetOpen[field.id] || !!searchVal;
 
         const addFreeform = (text) => {

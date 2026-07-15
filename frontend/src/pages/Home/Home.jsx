@@ -288,7 +288,6 @@ export default function Home() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [locationOpen, setLocationOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [locationPanelRect, setLocationPanelRect] = useState(null);
   const [filtersPanelRect, setFiltersPanelRect] = useState(null);
@@ -308,15 +307,23 @@ export default function Home() {
   } = useAddressSearch();
   const centerLockedRef = useRef(false);
   const restoreActiveRef = useRef(null);
-  const locationRefDesktop = useRef(null);
-  const locationRefMobile = useRef(null);
-  const filtersRefDesktop = useRef(null);
-  const filtersRefMobile = useRef(null);
+  const locationRef = useRef(null);
+  const filtersRef = useRef(null);
   const initialGeoRequestedRef = useRef(false);
   const mapSectionRef = useRef(null);
-  const locationDropdownPressRef = useRef(false);
   const currentLocationRequestRef = useRef(false);
-  const prevLocationValueRef = useRef('');
+  const [searchSlotEl, setSearchSlotEl] = useState(null);
+  const [locationFocused, setLocationFocused] = useState(false);
+  const locationBlurTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    setSearchSlotEl(document.getElementById('header-search-slot'));
+  }, []);
+
+  useEffect(() => () => {
+    if (locationBlurTimerRef.current) clearTimeout(locationBlurTimerRef.current);
+  }, []);
 
   const locationSuggestions = (addrList || []).slice(0, 10);
 
@@ -335,9 +342,9 @@ export default function Home() {
           centerLockedRef.current = true;
           setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           setCenterLabel('Current location');
-          setLocationOpen(false);
           setAddrOpen(false);
           setAddrQuery('Current location', { keepLocked: true });
+          setLocationFocused(false);
           currentLocationRequestRef.current = false;
         },
         () => {
@@ -349,7 +356,7 @@ export default function Home() {
         { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 },
       );
     },
-    [addrQuery, lockAddressInput, setAddrOpen, setAddrQuery, setCenter, setCenterLabel, setLocationOpen, unlockAddressInput],
+    [addrQuery, lockAddressInput, setAddrOpen, setAddrQuery, setCenter, setCenterLabel, unlockAddressInput],
   );
 
   useEffect(() => {
@@ -395,17 +402,15 @@ export default function Home() {
 
   useEffect(() => {
     const handler = (event) => {
-      const filterAnchors = [filtersRefDesktop.current, filtersRefMobile.current].filter(Boolean);
-      const clickedInsideFilters = filterAnchors.some((el) => el.contains(event.target));
-      if (!clickedInsideFilters) setFiltersOpen(false);
+      const anchor = filtersRef.current;
+      if (anchor && !anchor.contains(event.target)) setFiltersOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [setAddrOpen]);
 
   const getVisibleLocationRect = useCallback(() => {
-    const anchors = [locationRefDesktop.current, locationRefMobile.current].filter(Boolean);
-    const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
+    const visible = locationRef.current;
     if (!visible) return null;
     const rect = visible.getBoundingClientRect();
     const vw = typeof window !== 'undefined' ? window.innerWidth : 9999;
@@ -432,8 +437,7 @@ export default function Home() {
   }, [getVisibleLocationRect]);
 
   const updateFiltersPanelRect = useCallback(() => {
-    const anchors = [filtersRefDesktop.current, filtersRefMobile.current].filter(Boolean);
-    const visible = anchors.find((el) => el && el.offsetParent !== null) || anchors[0];
+    const visible = filtersRef.current;
     if (!visible) return;
     const rect = visible.getBoundingClientRect();
     const vw = typeof window !== 'undefined' ? window.innerWidth : 9999;
@@ -452,17 +456,8 @@ export default function Home() {
     });
   }, []);
 
-  const handleLocationFocus = useCallback(() => {
-    prevLocationValueRef.current = addrQuery || centerLabel || '';
-    setLocationOpen(true);
-    unlockAddressInput();
-    setAddrQuery('');
-    setAddrOpen(true);
-    setTimeout(updateLocationPanelRect, 0);
-  }, [addrQuery, centerLabel, setAddrOpen, setAddrQuery, unlockAddressInput, updateLocationPanelRect]);
-
   useEffect(() => {
-    if (!locationOpen || typeof window === 'undefined') return undefined;
+    if (!locationFocused || typeof window === 'undefined') return undefined;
     updateLocationPanelRect();
     const handler = () => updateLocationPanelRect();
     window.addEventListener('resize', handler);
@@ -471,15 +466,15 @@ export default function Home() {
       window.removeEventListener('resize', handler);
       window.removeEventListener('scroll', handler, true);
     };
-  }, [locationOpen, updateLocationPanelRect]);
+  }, [locationFocused, updateLocationPanelRect]);
 
   useEffect(() => {
-    if (!locationOpen) setLocationPanelRect(null);
-  }, [locationOpen]);
+    if (!locationFocused) setLocationPanelRect(null);
+  }, [locationFocused]);
 
   useEffect(() => {
-    if (locationOpen) updateLocationPanelRect();
-  }, [locationOpen, locationSuggestions.length, updateLocationPanelRect]);
+    if (locationFocused) updateLocationPanelRect();
+  }, [locationFocused, locationSuggestions.length, updateLocationPanelRect]);
 
   useEffect(() => {
     if (!filtersOpen || typeof window === 'undefined') return undefined;
@@ -494,28 +489,13 @@ export default function Home() {
   }, [filtersOpen, updateFiltersPanelRect]);
 
   useEffect(() => {
-    if ((!filtersOpen && !locationOpen) || typeof window === 'undefined') return undefined;
-    return undefined;
-  }, [filtersOpen, locationOpen]);
-
-  useEffect(() => {
-    if ((!filtersOpen && !locationOpen) || typeof document === 'undefined') return undefined;
+    if (!filtersOpen || typeof document === 'undefined') return undefined;
     const handleOutsideInteraction = (event) => {
       const target = event.target;
-      const anchorEls = [
-        filtersRefDesktop.current,
-        filtersRefMobile.current,
-        locationRefDesktop.current,
-        locationRefMobile.current,
-      ].filter(Boolean);
-      const insideAnchor = anchorEls.some((el) => el.contains(target));
+      if (filtersRef.current?.contains(target)) return;
       const insideDropdown = target.closest?.('.dropdown-panel');
-      if (insideAnchor || insideDropdown) return;
-      if (filtersOpen) setFiltersOpen(false);
-      if (locationOpen) {
-        setLocationOpen(false);
-        setAddrOpen(false);
-      }
+      if (insideDropdown) return;
+      setFiltersOpen(false);
     };
     document.addEventListener('touchstart', handleOutsideInteraction, true);
     document.addEventListener('mousedown', handleOutsideInteraction, true);
@@ -523,7 +503,7 @@ export default function Home() {
       document.removeEventListener('touchstart', handleOutsideInteraction, true);
       document.removeEventListener('mousedown', handleOutsideInteraction, true);
     };
-  }, [filtersOpen, locationOpen, setAddrOpen]);
+  }, [filtersOpen]);
 
   useEffect(() => {
     if (!filtersOpen) setFiltersPanelRect(null);
@@ -688,59 +668,61 @@ export default function Home() {
   const canUsePortal = typeof document !== 'undefined';
   const activeBizInfo = activeBiz && !activeBiz.clusterItems ? buildPopupData(activeBiz, center || WILMINGTON_CENTER) : null;
 
+  // Collapse the location segment once a location is chosen
+  const blurLocationInput = () => {
+    locationRef.current?.querySelector('input')?.blur();
+  };
+
   const locationRect = locationPanelRect || getVisibleLocationRect();
-  const locationDropdown = canUsePortal && locationOpen && locationRect
+  const locationSuggestionsPanel = canUsePortal && locationFocused && locationRect
     ? createPortal(
         <div
-          className="dropdown-panel dropdown-panel--overlay dropdown-panel--location"
+          className="search-suggestions"
           style={{
             top: locationRect.top,
             left: locationRect.left,
-            width: locationRect.width,
-            '--location-panel-top': `${locationRect.top}px`,
+            width: Math.max(locationRect.width, 240),
           }}
-          onMouseDown={(e) => {
-            locationDropdownPressRef.current = true;
-            e.stopPropagation();
-          }}
-          onTouchStart={(e) => {
-            locationDropdownPressRef.current = true;
-            e.stopPropagation();
-          }}
+          onMouseDown={(e) => e.preventDefault()}
         >
           <button
             type="button"
             className="dropdown-item dropdown-item--action"
-            onClick={() => applyCurrentLocation({ skipIfLocked: false })}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              applyCurrentLocation({ skipIfLocked: false });
+              setLocationFocused(false);
+              blurLocationInput();
+            }}
           >
             Use current location
           </button>
-          <div className="dropdown-scroll">
-            {addrFetching && <div className="dropdown-empty">Searching...</div>}
-            {!addrFetching && locationSuggestions.length === 0 && (
-              <div className="dropdown-empty">No matches yet. Try a city or ZIP.</div>
-            )}
-            {locationSuggestions.map((s, idx) => (
-              <button
-                key={`${s.label}-${idx}`}
-                type="button"
-                className="dropdown-item"
-                onClick={() => {
-                  if (s.lat != null && s.lng != null) {
-                    centerLockedRef.current = true;
-                    setCenter({ lat: s.lat, lng: s.lng });
-                  }
-                  setAddrQuery(s.label || '', { keepLocked: true });
-                  lockAddressInput();
-                  setCenterLabel(s.label || 'chosen address');
-                  setLocationOpen(false);
-                  setAddrOpen(false);
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+          {addrFetching && <div className="dropdown-empty">Searching...</div>}
+          {!addrFetching && locationSuggestions.length === 0 && (addrQuery || '').trim().length > 0 && (
+            <div className="dropdown-empty">No matches yet. Try a city or ZIP.</div>
+          )}
+          {locationSuggestions.map((s, idx) => (
+            <button
+              key={`${s.label}-${idx}`}
+              type="button"
+              className="dropdown-item"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                if (s.lat != null && s.lng != null) {
+                  centerLockedRef.current = true;
+                  setCenter({ lat: s.lat, lng: s.lng });
+                }
+                setAddrQuery(s.label || '', { keepLocked: true });
+                lockAddressInput();
+                setCenterLabel(s.label || 'chosen address');
+                setAddrOpen(false);
+                setLocationFocused(false);
+                blurLocationInput();
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>,
         document.body
       )
@@ -775,119 +757,104 @@ export default function Home() {
       )
     : null;
 
+  const searchBar = (
+    <div className="search-bar">
+      <div className="search-bar__section search-bar__section--query">
+        <Search size={16} className="search-bar__icon" aria-hidden="true" />
+        <input
+          className="search-bar__input"
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+          type="text"
+          placeholder="Search…"
+          aria-label="Search businesses"
+        />
+      </div>
+      <div className="search-bar__divider" aria-hidden="true" />
+      <div
+        className="search-bar__section search-bar__section--location"
+        ref={locationRef}
+        onClick={(e) => e.currentTarget.querySelector('input')?.focus()}
+      >
+        <MapPin size={16} className="search-bar__icon" aria-hidden="true" />
+        <input
+          className="search-bar__input"
+          value={addrQuery}
+          onChange={(e) => {
+            const v = e.target.value;
+            setAddrQuery(v);
+            unlockAddressInput();
+            if (v.trim().length >= 1) {
+              setAddrOpen(true);
+              searchAddress(v);
+            } else {
+              setAddrOpen(false);
+            }
+          }}
+          onFocus={() => {
+            if (locationBlurTimerRef.current) {
+              clearTimeout(locationBlurTimerRef.current);
+              locationBlurTimerRef.current = null;
+            }
+            setLocationFocused(true);
+            updateLocationPanelRect();
+          }}
+          onBlur={() => {
+            locationBlurTimerRef.current = setTimeout(() => {
+              setLocationFocused(false);
+              setAddrOpen(false);
+            }, 150);
+          }}
+          type="text"
+          placeholder="Location"
+          aria-label="Location"
+          autoComplete="street-address"
+          autoCorrect="off"
+          spellCheck="false"
+        />
+      </div>
+      <button
+        type="button"
+        className={`search-bar__filters ${filtersOpen ? 'is-active' : ''}`}
+        ref={filtersRef}
+        onClick={() =>
+          setFiltersOpen((open) => {
+            const next = !open;
+            if (!open && next) {
+              setTimeout(updateFiltersPanelRect, 0);
+            }
+            return next;
+          })
+        }
+        aria-label="Filters"
+        aria-haspopup="true"
+        aria-expanded={filtersOpen}
+      >
+        <SlidersHorizontal size={18} />
+      </button>
+      <button
+        type="button"
+        className="search-bar__submit"
+        aria-label="Search"
+      >
+        <Search size={18} />
+      </button>
+    </div>
+  );
+
+  const searchBarPortal =
+    canUsePortal && searchSlotEl ? createPortal(searchBar, searchSlotEl) : null;
+
   return (
     <>
     <div className="min-h-[100svh] min-h-[100dvh] flex flex-col bg-[var(--bg)] text-[var(--text)]">
       <main className="flex-1 flex flex-col">
         <section className="flex-1 pt-8 pb-16 lg:pt-10 lg:pb-20 px-2 sm:px-4 lg:px-6">
-          <div className="w-full flex flex-col gap-8 lg:gap-10">
-            <div className="rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6 hidden lg:block">
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="relative flex-1 min-w-[220px] max-w-3xl">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
-                  <input
-                    value={what}
-                    onChange={(e) => setWhat(e.target.value)}
-                    type="text"
-                    placeholder="Search by name, product, or area..."
-                    className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                  />
-                </div>
-
-                <div className={`relative flex-1 min-w-[220px] max-w-md ${locationOpen ? 'z-50' : ''}`} ref={locationRefDesktop}>
-                  <div className="relative">
-                    <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
-                    <input
-                      type="text"
-                      value={addrQuery}
-                      autoComplete="street-address"
-                      autoCorrect="off"
-                      spellCheck="false"
-                      inputMode="text"
-                      enterKeyHint="search"
-                      onFocus={() => {
-                        handleLocationFocus();
-                        const shouldAutoLocate =
-                          !centerLockedRef.current && (!addrQuery || addrQuery === 'Current location');
-                        if (shouldAutoLocate && !currentLocationRequestRef.current) {
-                          if (navigator?.permissions?.query) {
-                            navigator.permissions
-                              .query({ name: 'geolocation' })
-                              .then((status) => {
-                                if (status.state === 'granted') {
-                                  applyCurrentLocation({ skipIfLocked: false });
-                                }
-                              })
-                              .catch(() => {});
-                          } else {
-                            applyCurrentLocation({ skipIfLocked: false });
-                          }
-                        }
-                      }}
-                      onClick={() => {
-                        handleLocationFocus();
-                      }}
-                      onMouseDown={() => {
-                        handleLocationFocus();
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setAddrQuery(value);
-                        unlockAddressInput();
-                        setLocationOpen(true);
-                        if (value && value.trim().length >= 1) {
-                          setAddrOpen(true);
-                          searchAddress(value);
-                        } else {
-                          setAddrOpen(false);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (locationDropdownPressRef.current) {
-                          // allow clicks inside the dropdown without closing
-                          locationDropdownPressRef.current = false;
-                          return;
-                        }
-                        const trimmed = (addrQuery || '').trim();
-                        if (!trimmed && prevLocationValueRef.current) {
-                          setAddrQuery(prevLocationValueRef.current, { keepLocked: true });
-                        }
-                        setLocationOpen(false);
-                        setAddrOpen(false);
-                      }}
-                      placeholder="Location"
-                      className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                    />
-                  </div>
-                </div>
-
-                <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRefDesktop}>
-                  <button
-                    type="button"
-                    className={`text-trigger ${filtersOpen ? 'text-[var(--ceramic)]' : ''}`}
-                    onClick={() =>
-                      setFiltersOpen((open) => {
-                        const next = !open;
-                        if (!open && next) {
-                          setTimeout(updateFiltersPanelRect, 0);
-                        }
-                        return next;
-                      })
-                    }
-                    aria-haspopup="true"
-                    aria-expanded={filtersOpen}
-                  >
-                    <SlidersHorizontal size={18} />
-                    <span className="text-base">Filters</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="text-sm text-white/70 text-center md:text-left mt-3">
-                {center
-                  ? `Showing ${filtered.length} result${filtered.length === 1 ? '' : 's'} within ${radiusMi} mi of ${centerLabel}.`
-                  : 'Choose a location to see nearby businesses.'}
-              </div>
+          <div className="w-full flex flex-col gap-6 lg:gap-8">
+            <div className="text-sm text-[var(--text-muted)] text-center md:text-left px-1">
+              {center
+                ? `Showing ${filtered.length} result${filtered.length === 1 ? '' : 's'} within ${radiusMi} mi of ${centerLabel}.`
+                : 'Choose a location to see nearby businesses.'}
             </div>
 
             <div className="home-results-grid grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-stretch">
@@ -908,111 +875,6 @@ export default function Home() {
                   setActiveBiz={setActiveBiz}
                   restoreActiveRef={restoreActiveRef}
                 />
-              </div>
-
-              <div className="home-search-panel rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-xl shadow-2xl px-5 py-5 md:px-7 md:py-6 order-2 lg:order-none lg:hidden">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="relative flex-1 min-w-[220px]">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" size={18} />
-                    <input
-                      value={what}
-                      onChange={(e) => setWhat(e.target.value)}
-                      type="text"
-                      placeholder="Search by name, product, or area..."
-                      className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                    />
-                  </div>
-
-                  <div className={`relative flex-1 min-w-[220px] ${locationOpen ? 'z-50' : ''}`} ref={locationRefMobile}>
-                    <div className="relative">
-                      <LocateFixed className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={18} />
-                      <input
-                        type="text"
-                        value={addrQuery}
-                        autoComplete="street-address"
-                        autoCorrect="off"
-                        spellCheck="false"
-                        inputMode="text"
-                        enterKeyHint="search"
-                      onFocus={() => {
-                        handleLocationFocus();
-                        const shouldAutoLocate =
-                          !centerLockedRef.current && (!addrQuery || addrQuery === 'Current location');
-                        if (shouldAutoLocate && !currentLocationRequestRef.current) {
-                          if (navigator?.permissions?.query) {
-                            navigator.permissions
-                              .query({ name: 'geolocation' })
-                              .then((status) => {
-                                if (status.state === 'granted') {
-                                  applyCurrentLocation({ skipIfLocked: false });
-                                }
-                              })
-                              .catch(() => {});
-                          } else {
-                            applyCurrentLocation({ skipIfLocked: false });
-                          }
-                        }
-                      }}
-                      onClick={() => {
-                        handleLocationFocus();
-                      }}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setAddrQuery(value);
-                        unlockAddressInput();
-                        setLocationOpen(true);
-                        if (value && value.trim().length >= 1) {
-                          setAddrOpen(true);
-                          searchAddress(value);
-                        } else {
-                          setAddrOpen(false);
-                        }
-                      }}
-                      onBlur={() => {
-                        if (locationDropdownPressRef.current) {
-                          locationDropdownPressRef.current = false;
-                          return;
-                        }
-                        const trimmed = (addrQuery || '').trim();
-                        if (!trimmed && prevLocationValueRef.current) {
-                          setAddrQuery(prevLocationValueRef.current, { keepLocked: true });
-                        }
-                        setLocationOpen(false);
-                        setAddrOpen(false);
-                      }}
-                      placeholder="Location"
-                      className="w-full h-11 rounded-2xl bg-[var(--bg-alt)] border border-[var(--border)] pl-12 pr-4 text-base focus:outline-none focus:border-[var(--ceramic)] focus:ring-0"
-                    />
-                  </div>
-                </div>
-
-                  <div className={`relative ${filtersOpen ? 'z-50' : ''}`} ref={filtersRefMobile}>
-                    <button
-                      type="button"
-                      className={`text-trigger ${filtersOpen ? 'text-[var(--ceramic)]' : ''}`}
-                      onClick={() =>
-                        setFiltersOpen((open) => {
-                          const next = !open;
-                          if (!open && next) {
-                            setTimeout(updateFiltersPanelRect, 0);
-                          }
-                          return next;
-                        })
-                      }
-                      aria-haspopup="true"
-                      aria-expanded={filtersOpen}
-                    >
-                      <SlidersHorizontal size={18} />
-                      <span className="text-base">Filters</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="text-sm text-white/70 text-center md:text-left mt-3">
-                  {center
-                    ? `Showing ${filtered.length} result${filtered.length === 1 ? '' : 's'} within ${radiusMi} mi of ${centerLabel}.`
-                    : 'Choose a location to see nearby businesses.'}
-                </div>
               </div>
 
               <div className="home-results-panel home-results-panel--desktop rounded-3xl border border-[var(--border)] bg-[var(--bg-panel)]/92 backdrop-blur-lg shadow-2xl p-5 hidden lg:flex flex-col relative z-10 order-3 lg:order-1 h-full">
@@ -1295,7 +1157,8 @@ export default function Home() {
         </footer>
       </main>
     </div>
-    {locationDropdown}
+    {searchBarPortal}
+    {locationSuggestionsPanel}
     {filtersDropdown}
     </>
   );
@@ -1307,8 +1170,6 @@ function ResultsMap({
   focusBusiness,
   mapStyle = MAPBOX_DEFAULT_STYLE,
   onCloseup,
-  setCenter,
-  setCenterLabel,
   radiusMi,
   activeBiz,
   setActiveBiz,
@@ -1959,8 +1820,15 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
   const [overlayEl, setOverlayEl] = useState(null);
   const [projectedItems, setProjectedItems] = useState([]);
   const [projectedCenter, setProjectedCenter] = useState(null);
-  const [currentZoom, setCurrentZoom] = useState(zoom);
   const pendingCloseupRef = useRef(false);
+
+  // react-leaflet v5 removed whenCreated; the MapContainer ref receives the map instance
+  const handleMapInstance = useCallback((map) => {
+    if (!map) return;
+    mapRef.current = map;
+    map.setMinZoom(HOME_MIN_ZOOM);
+    setLeafletMap(map);
+  }, []);
   const popupRef = useRef(null);
 
   const handleLeafletCloseup = useCallback(
@@ -2089,14 +1957,6 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
   }, [center, items, updateOverlayPositions]);
 
   useEffect(() => {
-    if (!leafletMap) return;
-    const handleZoomChange = () => setCurrentZoom(leafletMap.getZoom());
-    handleZoomChange();
-    leafletMap.on('zoom', handleZoomChange);
-    return () => leafletMap.off('zoom', handleZoomChange);
-  }, [leafletMap]);
-
-  useEffect(() => {
     if (!leafletMap || !center) return;
     const coords = toLeafletTuple(center);
     if (!coords) return;
@@ -2151,12 +2011,7 @@ function LeafletFallback({ center, items, focusBusiness, onCloseup }) {
         scrollWheelZoom
         style={{ width: '100%', height: '100%' }}
         attributionControl={false}
-        whenCreated={(map) => {
-          mapRef.current = map;
-          map.setMinZoom(HOME_MIN_ZOOM);
-          setLeafletMap(map);
-          setCurrentZoom(map.getZoom());
-        }}
+        ref={handleMapInstance}
       >
         <TileLayer {...tileProps} />
       </MapContainer>
